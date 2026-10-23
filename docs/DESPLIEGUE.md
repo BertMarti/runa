@@ -67,7 +67,7 @@ docker run … -v "$PWD/data":/data ghcr.io/bertmarti/runa:latest
 
 ## Raspberry Pi
 
-La imagen es multiarquitectura (arm64). En una Raspberry Pi 5, RUNA usa unos 75 MB de RAM en reposo (medido: 73 MB). Si no quieres exponerlo a Internet, publícalo solo a través de una VPN como [HEIMDALL](https://github.com/BertMarti/HEIMDALL).
+La imagen es multiarquitectura (arm64). En una Raspberry Pi 5, RUNA usa menos de 80 MB de RAM en reposo (medido: 43 MB con la imagen distroless Debian 13). Si no quieres exponerlo a Internet, publícalo solo a través de una VPN como [HEIMDALL](https://github.com/BertMarti/HEIMDALL).
 
 ## Copias de seguridad
 
