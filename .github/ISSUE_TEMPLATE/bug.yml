@@ -1,0 +1,23 @@
+name: Error
+description: Algo no funciona como debería
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "⚠️ Si es una vulnerabilidad, **no** abras un issue: usa Security → Report a vulnerability."
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperabas y qué pasó
+    validations:
+      required: true
+  - type: input
+    id: navegador
+    attributes:
+      label: Navegador y sistema

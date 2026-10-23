@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+data
+coverage
+.git
+.github
+docs
+*.md
+!apps/**/*.md
+.env
+.env.*
+dk.sh

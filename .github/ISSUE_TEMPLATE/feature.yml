@@ -1,0 +1,18 @@
+name: Idea
+description: Propón una mejora
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: ¿Qué problema resuelve?
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta
+  - type: textarea
+    id: seguridad
+    attributes:
+      label: ¿Afecta a la seguridad o a la privacidad?

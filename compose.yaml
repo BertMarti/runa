@@ -1,0 +1,30 @@
+# RUNA con Docker Compose. Uso: `docker compose up -d` → http://localhost:8484
+# En producción, pon delante un proxy con HTTPS (Caddy, Traefik, nginx) y
+# activa TRUST_PROXY y HSTS (ver docs/DESPLIEGUE.md).
+services:
+  runa:
+    build: .
+    image: ghcr.io/bertmarti/runa:latest
+    container_name: runa
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8484:8080"
+    environment:
+      MAX_STORAGE_MB: "512"
+      # TRUST_PROXY: "172.16.0.0/12"   # IP/CIDR de tu proxy inverso
+      # HSTS: "true"                  # solo si se sirve por HTTPS
+    volumes:
+      - runa-data:/data
+    # Endurecimiento del contenedor
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 1.0
+
+volumes:
+  runa-data:

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>RUNA banner</title>
+<style>
+@font-face { font-family: Cinzel; font-weight: 700; src: url(../../node_modules/@fontsource/cinzel/files/cinzel-latin-700-normal.woff2); }
+@font-face { font-family: Inter; font-weight: 100 900; src: url(../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2); }
+@font-face { font-family: Mono; font-weight: 100 900; src: url(../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2); }
+* { margin: 0; box-sizing: border-box; }
+html, body { width: 1280px; height: 640px; overflow: hidden; background: #070a10; }
+body { position: relative; font-family: Inter, sans-serif; color: #e8ecf4; }
+.aurora { position: absolute; inset: -20%; filter: blur(60px); opacity: .85;
+  background:
+    radial-gradient(40% 35% at 70% 40%, rgba(62,230,193,.35), transparent 70%),
+    radial-gradient(35% 40% at 85% 65%, rgba(139,123,255,.40), transparent 70%),
+    radial-gradient(30% 30% at 20% 90%, rgba(62,230,193,.12), transparent 70%); }
+.grid { position: absolute; inset: 0; opacity: .07;
+  background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px);
+  background-size: 40px 40px; mask-image: radial-gradient(70% 70% at 50% 50%, #000, transparent); }
+.copy { position: absolute; left: 88px; top: 140px; width: 640px; }
+.eyebrow { font: 600 15px/1 Mono, monospace; letter-spacing: .28em; text-transform: uppercase; color: #3ee6c1; }
+h1 { margin-top: 22px; font: 700 132px/1 Cinzel, serif; letter-spacing: .12em;
+  background: linear-gradient(100deg, #f4f7ff 30%, #9ff5df 65%, #b6abff); -webkit-background-clip: text; color: transparent; }
+.tag { margin-top: 26px; font-size: 30px; line-height: 1.3; font-weight: 500; color: #c9d1e3; }
+.chips { margin-top: 38px; display: flex; gap: 12px; flex-wrap: wrap; }
+.chip { font: 500 15px/1 Inter; padding: 10px 14px; border-radius: 999px; color: #dfe6f5;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
+.seal { position: absolute; right: 120px; top: 120px; width: 400px; height: 400px; }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(159,245,223,.35);
+  box-shadow: 0 0 80px rgba(62,230,193,.25), inset 0 0 60px rgba(139,123,255,.18); }
+.ring.inner { inset: 70px; border-color: rgba(182,171,255,.4); }
+.rune { position: absolute; left: 50%; top: 50%; font-family: 'DejaVu Sans'; font-size: 30px; color: rgba(214,250,240,.75);
+  text-shadow: 0 0 14px rgba(62,230,193,.8); }
+.core { position: absolute; inset: 130px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgba(62,230,193,.25), rgba(7,10,16,.9) 70%);
+  border: 1px solid rgba(255,255,255,.18); font-family: 'DejaVu Sans'; font-size: 92px; color: #eafff9;
+  text-shadow: 0 0 30px rgba(62,230,193,.9), 0 0 60px rgba(139,123,255,.6); }
+.foot { position: absolute; left: 88px; bottom: 54px; font: 500 14px/1 Mono; color: #7f8aa3; letter-spacing: .06em; }
+</style>
+</head>
+<body>
+<div class="aurora"></div><div class="grid"></div>
+<div class="copy">
+  <div class="eyebrow">rún · «secreto» en nórdico antiguo</div>
+  <h1>RUNA</h1>
+  <p class="tag">Comparte contraseñas y archivos que se leen una vez… y desaparecen.</p>
+  <div class="chips">
+    <span class="chip">Cifrado de extremo a extremo</span>
+    <span class="chip">Autodestrucción</span>
+    <span class="chip">Conocimiento cero</span>
+    <span class="chip">Código abierto</span>
+  </div>
+</div>
+<div class="seal" id="seal"><div class="ring"></div><div class="ring inner"></div><div class="core">ᚱ</div></div>
+<div class="foot">github.com/BertMarti/runa</div>
+<script>
+  const runes = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
+  const seal = document.getElementById('seal');
+  [...runes].forEach((r, i, a) => {
+    const el = document.createElement('span');
+    el.className = 'rune'; el.textContent = r;
+    const ang = (i / a.length) * Math.PI * 2;
+    el.style.transform = `translate(-50%,-50%) translate(${Math.cos(ang) * 168}px, ${Math.sin(ang) * 168}px) rotate(${ang + Math.PI / 2}rad)`;
+    seal.appendChild(el);
+  });
+</script>
+</body>
+</html>
