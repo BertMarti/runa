@@ -45,6 +45,11 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 | F13 | info | HSTS con `preload` por defecto. | Sin `preload`; documentado. |
 | F14 | info | Docs con detalles de la red personal del autor. | Recortados. |
 
+## Tras publicar (2026-10-24)
+
+- El primer CI de la imagen falló **a propósito**: Grype encontró CVE altas con arreglo en `distroless/nodejs24-debian12` (Node 24.14, OpenSSL 3.0.18, glibc antiguos). Se cambió a `distroless/nodejs24-debian13` (Node 24.22): 0 vulnerabilidades con arreglo.
+- Dependabot propuso Node 25 (no LTS), `@types/node` 26 y TypeScript 7 (incompatible con typescript-eslint). Se cerraron los PR y se ignoran esas versiones mayores en `dependabot.yml`.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.

@@ -18,7 +18,7 @@ RUN npm run build \
  && mkdir -p /out/data
 
 # ---------- 2. Ejecución: distroless, sin shell ni gestor de paquetes ----------
-FROM gcr.io/distroless/nodejs24-debian12:nonroot@sha256:14d42e2511532589a7c7e01a753667a74fcc96266e137e8125006b87b0c32d0a
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:cb606325b7ec4af55462cb0b424a53b452a5b4a894ffe841fcf1048d216fb9f8
 WORKDIR /app
 
 ENV NODE_ENV=production \
