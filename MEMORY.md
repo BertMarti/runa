@@ -65,6 +65,12 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - 0.2.1: la comprobación de `CREATE_FROM` va en `onRequest` (antes de leer el cuerpo); la prueba de extremo a extremo con cuerpo no válido daba 400 en vez de 403.
 - `PUBLIC_URL` + `GET /api/config` (`{publicUrl, createAllowed}`); la web valida que `publicUrl` sea https (o http en localhost).
 
+## «Crear secreto» dentro de ARIA (2026-10-24)
+
+- Problema real (visto en los registros de aria-app): el usuario entra en ARIA por su dominio también desde casa, así que el mosaico lo llevaba al RUNA público, donde crear está prohibido.
+- Solución (ARIA #3 y #4, fusionados y desplegados): el módulo sirve `/api/modulos/runa/crear` con sesión y CSP propia. La página cifra en el navegador (`modulos/runa/web/runa-cripto.mjs`, bytes idénticos a `protocolo.py`) y `POST /api/modulos/runa/secretos` reenvía solo el cifrado a RUNA por la red interna, con un límite de 10 por minuto por persona.
+- Comprobado en producción en el Chrome del usuario: creado en ARIA → revelado por el dominio público desde Internet → 404 al reabrir.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.
