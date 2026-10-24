@@ -52,7 +52,7 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 
 ## Integración con ARIA (2026-10-24)
 
-- Módulo `modulos/runa/` en BertMarti/ARIA (PR desde `agent/runa/modulo-runa`, lo revisa e integra la sesión de ARIA). Protocolo v1 reimplementado en Python (`protocolo.py`, con `cryptography`).
+- Módulo `modulos/runa/` en BertMarti/ARIA: PR #2 **fusionado y desplegado** el 2026-10-24 (suite de ARIA 1434/1434). Contenedores `aria-runa` (0.2.1) y `aria-runa-tls` (8485 solo en la LAN). Pendiente del usuario: `cloudflare/configurar.sh` para publicar `runa.<dominio>` (los cambios de DNS los hace o autoriza él). Protocolo v1 reimplementado en Python (`protocolo.py`, con `cryptography`).
 - Compatibilidad en los dos sentidos: ARIA prueba vectores cifrados por esta web y RUNA prueba vectores cifrados por Python (`compat-python.test.ts`). **Cualquier cambio del protocolo rompe ambos: requiere protocolo v2 y actualizar los dos repos.**
 - Despliegue en ARIA: `aria-runa` (sin puertos) + `aria-runa-tls` (Caddy en 8485 con la CA interna de ARIA y su `/internal/tls-ask`). La imagen de Caddy necesita `cap_add: NET_BIND_SERVICE` aunque escuche en un puerto alto: el binario lleva esa capacidad grabada y con `cap_drop: ALL` el kernel no lo ejecuta.
 - Probado de extremo a extremo: código del módulo → RUNA real tras el Caddy del módulo → Chromium real revela el secreto → reabrir da 404.
