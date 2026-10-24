@@ -1,6 +1,6 @@
 {
   "name": "runa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Comparte secretos cifrados de extremo a extremo que se autodestruyen al leerse.",
   "license": "MIT",

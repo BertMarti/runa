@@ -4,7 +4,8 @@
 
 | Versión | Soporte |
 |---|---|
-| 0.1.x | ✅ |
+| 0.2.x | ✅ |
+| 0.1.x | ❌ (actualiza a 0.2) |
 
 ## Cómo informar de una vulnerabilidad
 

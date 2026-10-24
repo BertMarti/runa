@@ -27,6 +27,8 @@ export const en: Messages = {
     textLabel: 'Secret',
     textPlaceholder: 'A password, an API key, a private note…',
     counter: '{n} of {max} characters',
+    createDisabled:
+      'This server only lets you create secrets from the home network (or through ARIA). From here you can open the ones you receive.',
     tooLong: 'The text is over the {max} character limit.',
     insertPassword: 'Generate a strong password',
     insertedPassword: 'Random password inserted into the secret.',
@@ -138,6 +140,7 @@ export const en: Messages = {
     too_large: 'The secret is too large. Shorten the text or the file.',
     rate_limited: 'Too many attempts in a row. Wait {s} s and try again.',
     storage_full: 'The server is full right now. Try again in a few minutes.',
+    create_forbidden: 'From here you can only open secrets. To create one, connect from home or ask ARIA.',
     network: 'Cannot reach the server. Check your connection and try again.',
     server: 'The server failed. Try again in a few minutes.',
     crypto: 'Your browser could not encrypt the secret. Try a recent version.',

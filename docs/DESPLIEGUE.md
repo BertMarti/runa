@@ -50,6 +50,8 @@ environment:
 | `TRUST_PROXY` | `false` | `true`, o lista de IP/CIDR de proxies de confianza. |
 | `HSTS` | `false` | Envía `Strict-Transport-Security` (solo detrás de HTTPS). |
 | `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug` o `silent`. |
+| `CREATE_FROM` | (vacío: desde cualquier sitio) | IP o CIDR desde las que se pueden **crear** secretos, p. ej. `172.16.0.0/12,192.168.0.0/16`. Leer siempre se puede. Con esta opción, todo lo que llega por Cloudflare (`Cf-Connecting-IP`/`Cf-Ray`) se trata como externo. |
+| `PUBLIC_URL` | (vacío: el de la página) | Origen de los enlaces que genera la web, p. ej. `https://runa.example.com`. Útil si creas desde casa y compartes con gente de fuera. |
 | `PUBLIC_DIR` | `apps/web/dist` | Web compilada; `none` para servir solo la API. |
 
 ### Carpeta local en vez de volumen
@@ -64,6 +66,31 @@ docker run … -v "$PWD/data":/data ghcr.io/bertmarti/runa:latest
 ### HSTS
 
 `HSTS=true` envía `Strict-Transport-Security: max-age=63072000; includeSubDomains` (2 años). No incluye `preload`: añadir tu dominio a la lista de precarga de los navegadores es difícil de deshacer y debe ser una decisión tuya.
+
+## Leer desde fuera, crear solo desde casa
+
+El caso habitual en un homelab: quien recibe el enlace está **fuera** de casa, pero no quieres que cualquiera de
+Internet use tu RUNA para alojar secretos o archivos con tu dominio.
+
+1. Publica RUNA por un túnel (p. ej. Cloudflare Tunnel: `runa.example.com` → `http://runa:8080`). **Sin**
+   Cloudflare Access: quien recibe el enlace no tiene cuenta.
+2. En RUNA:
+
+   ```yaml
+   environment:
+     TRUST_PROXY: "172.16.0.0/12"            # la red de Docker donde está el conector del túnel
+     CREATE_FROM: "172.16.0.0/12,192.168.0.0/16"
+     PUBLIC_URL: "https://runa.example.com"
+   ```
+
+Resultado:
+
+- desde casa (o desde una aplicación de la red de Docker, como ARIA) se crean secretos, y sus enlaces llevan el dominio público;
+- desde fuera solo se abren: crear da 403 y la web lo explica;
+- los límites de lectura y de «destruir» van por la IP real de cada cliente (`Cf-Connecting-IP`).
+
+Si algún día Cloudflare queda bloqueado en tu red o tu país, los enlaces públicos no abrirán hasta que se
+levante el bloqueo.
 
 ## Raspberry Pi
 

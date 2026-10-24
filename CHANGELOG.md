@@ -4,8 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.2.0] - 2026-10-24
+
 ### Añadido
 
+- **Leer desde fuera, crear solo desde casa**: `CREATE_FROM` limita quién puede crear secretos (IP o CIDR). Todo
+  lo que llega por Cloudflare cuenta como externo, aunque se falsifique `X-Forwarded-For` o `TRUST_PROXY` esté
+  mal configurado.
+- `PUBLIC_URL`: los enlaces que genera la web llevan el dominio público aunque el secreto se cree desde la LAN.
+- `GET /api/config`: la web sabe si puede crear desde donde está y lo explica en vez de fallar.
+- El límite de peticiones usa la IP real de cada cliente del túnel (`Cf-Connecting-IP` desde una red privada).
 - Prueba de compatibilidad con la implementación en Python del módulo RUNA de ARIA (`apps/web/test/compat-python.test.ts`).
 
 ## [0.1.0] - 2026-10-24
@@ -34,5 +42,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.1.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/BertMarti/runa/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/BertMarti/runa/releases/tag/v0.1.0

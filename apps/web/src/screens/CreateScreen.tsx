@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { createSecret } from '../api';
+import { createSecret, getConfig, type DeployConfig } from '../api';
 import { Faq } from '../components/Faq';
 import { FileDrop } from '../components/FileDrop';
 import { HowItWorks } from '../components/HowItWorks';
@@ -90,6 +90,7 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
   const [views, setViews] = useState<number>(1);
   const [pass, setPass] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deploy, setDeploy] = useState<DeployConfig>({ publicUrl: null, createAllowed: true });
   const textRef = useRef<HTMLTextAreaElement>(null);
   const id = useId();
   const counterId = `${id}-counter`;
@@ -99,7 +100,17 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
 
   const tooLong = text.length > MAX_TEXT_CHARS;
   const empty = text.length === 0 && !file;
-  const canSubmit = !empty && !tooLong && !sealing;
+  const canSubmit = !empty && !tooLong && !sealing && deploy.createAllowed;
+
+  // Dominio de los enlaces y permiso para crear: el servidor puede publicarse para leer desde fuera
+  // y permitir crear solo desde casa (CREATE_FROM / PUBLIC_URL).
+  useEffect(() => {
+    const ctl = new AbortController();
+    void getConfig(ctl.signal).then((cfg) => {
+      if (!ctl.signal.aborted) setDeploy(cfg);
+    });
+    return () => ctl.abort();
+  }, []);
 
   const insertPassword = () => {
     const pw = generatePassword();
@@ -150,7 +161,7 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
 
       onCreated({
         id: created.id,
-        link: `${location.origin}/s/${created.id}#${sealed.fragment}`,
+        link: `${deploy.publicUrl ?? location.origin}/s/${created.id}#${sealed.fragment}`,
         expiresAt: created.expiresAt,
         views,
         hasPassphrase: Boolean(passphrase),
@@ -260,6 +271,12 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
       />
 
       <div className="form__submit">
+        {deploy.createAllowed ? null : (
+          <p className="alert alert--note" role="note">
+            <Icon name="lock" />
+            <span>{t.create.createDisabled}</span>
+          </p>
+        )}
         <button
           type="submit"
           className="btn btn--primary btn--big"

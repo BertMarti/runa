@@ -105,3 +105,48 @@ describe('pantalla de crear', () => {
     expect(document.documentElement.lang).toBe('en');
   });
 });
+
+describe('despliegue con lectura pública (v0.2)', () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('si el servidor no deja crear desde aquí, lo explica y no deja enviar', async () => {
+    fetchMock.mockImplementation(async (input) =>
+      String(input) === '/api/config' ? json({ publicUrl: null, createAllowed: false }) : json({}, 500),
+    );
+    at('/');
+    render(<App lang="es" />);
+    expect(await screen.findByText(/solo se pueden crear secretos desde la red de casa/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'hola' } });
+    const submit = screen.getByRole('button', { name: 'Cifrar y crear enlace' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+  });
+
+  it('el enlace usa el dominio público aunque se cree desde casa', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === '/api/config') return json({ publicUrl: 'https://runa.example.com', createAllowed: true });
+      if (url === '/api/secrets') return json({ id: ID, expiresAt: '2026-10-25T10:00:00.000Z' }, 201);
+      return json({}, 500);
+    });
+    at('/');
+    render(<App lang="es" />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'hola' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cifrar y crear enlace' }));
+    const enlace = await screen.findByText(/^https:\/\/runa\.example\.com\/s\/AbCdEfGhIjKlMnOpQrStUv#v1\./, {}, { timeout: 5000 });
+    expect(enlace).toBeTruthy();
+  });
+
+  it('un origen no seguro en publicUrl se ignora', async () => {
+    const { getConfig } = await import('../src/api');
+    fetchMock.mockResolvedValue(json({ publicUrl: 'javascript:alert(1)', createAllowed: true }));
+    expect(await getConfig()).toEqual({ publicUrl: null, createAllowed: true });
+    fetchMock.mockResolvedValue(json({ publicUrl: 'http://runa.example.com', createAllowed: false }));
+    expect(await getConfig()).toEqual({ publicUrl: null, createAllowed: false });
+    fetchMock.mockRejectedValue(new TypeError('sin red'));
+    expect(await getConfig()).toEqual({ publicUrl: null, createAllowed: true });
+  });
+});

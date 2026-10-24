@@ -13,6 +13,7 @@ export type ApiErrorCode =
   | 'too_large'
   | 'rate_limited'
   | 'storage_full'
+  | 'create_forbidden'
   | 'denied'
   | 'not_found'
   | 'network'
@@ -74,6 +75,7 @@ async function toApiError(res: Response): Promise<ApiError> {
     case 400:
       return new ApiError('invalid_request', 400);
     case 403:
+      if (body.error === 'create_forbidden') return new ApiError('create_forbidden', 403);
       return new ApiError('denied', 403, { attemptsLeft: nonNegativeInt(body.attemptsLeft) });
     case 404:
       return new ApiError('not_found', 404);
@@ -110,6 +112,45 @@ async function post(path: string, body: unknown, signal?: AbortSignal): Promise<
   }
   if (!res.ok) throw await toApiError(res);
   return res;
+}
+
+export interface DeployConfig {
+  /** Origen de los enlaces que se comparten; `null` = el de esta página. */
+  publicUrl: string | null;
+  /** Si este navegador puede crear secretos (el servidor puede limitarlo a la red de casa). */
+  createAllowed: boolean;
+}
+
+const DEFAULT_CONFIG: DeployConfig = { publicUrl: null, createAllowed: true };
+
+/** Solo un origen https (o http en localhost); cualquier otra cosa se ignora. */
+function safeOrigin(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    return url.protocol === 'https:' || (url.protocol === 'http:' && local) ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Configuración del despliegue. Si falla, la de siempre: el servidor vuelve a comprobarlo todo al crear. */
+export async function getConfig(signal?: AbortSignal): Promise<DeployConfig> {
+  try {
+    const res = await fetch('/api/config', {
+      credentials: 'omit',
+      cache: 'no-store',
+      referrerPolicy: 'no-referrer',
+      redirect: 'error',
+      signal,
+    });
+    if (!res.ok) return DEFAULT_CONFIG;
+    const body = await readJson(res);
+    return { publicUrl: safeOrigin(body.publicUrl), createAllowed: body.createAllowed !== false };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
 }
 
 function secretPath(id: string, action: 'open' | 'burn'): string {

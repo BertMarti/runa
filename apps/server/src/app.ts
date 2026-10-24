@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import helmet from '@fastify/helmet';
@@ -104,6 +105,35 @@ export function rateLimitKey(ip: string): string {
   return `${groups.slice(0, 4).map((g) => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/64`;
 }
 
+const PRIVATE = createAllowed(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', 'fc00::/7', '::1']);
+
+/**
+ * IP para el límite de peticiones. Por el túnel de Cloudflare, `Cf-Connecting-IP` es la IP real (Cloudflare la
+ * pone y descarta la del cliente); solo se cree si la conexión llega desde una red privada (el conector).
+ */
+export function clientIp(req: FastifyRequest): string {
+  const cf = req.headers['cf-connecting-ip'];
+  if (typeof cf === 'string' && net.isIP(cf) && PRIVATE(req.socket.remoteAddress ?? '')) return cf;
+  return req.ip;
+}
+
+/** ¿Puede esta IP crear secretos? Sin `CREATE_FROM`, todas pueden. */
+export function createAllowed(networks: string[] | null): (ip: string) => boolean {
+  if (!networks) return () => true;
+  const list = new net.BlockList();
+  for (const n of networks) {
+    const [ip = '', bits] = n.split('/');
+    const family = net.isIP(ip) === 6 ? 'ipv6' : 'ipv4';
+    if (bits === undefined) list.addAddress(ip, family);
+    else list.addSubnet(ip, Number(bits), family);
+  }
+  return (ip) => {
+    const v4 = ip.startsWith('::ffff:') && net.isIPv4(ip.slice(7)) ? ip.slice(7) : ip;
+    const family = net.isIPv4(v4) ? 'ipv4' : net.isIPv6(v4) ? 'ipv6' : null;
+    return family !== null && list.check(v4, family);
+  };
+}
+
 /** Registro sin IP, sin cuerpos ni identificadores: solo método, ruta y código. */
 const logSerializers = {
   req(req: FastifyRequest) {
@@ -148,7 +178,7 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
     timeWindow: '1 minute',
     // La web estática no cuenta: una oficina tras una sola IP no debe quedarse sin página.
     allowList: (req) => !API_PATH.test(req.url),
-    keyGenerator: (req) => rateLimitKey(req.ip),
+    keyGenerator: (req) => rateLimitKey(clientIp(req)),
     // Solo en memoria: las IP no se escriben en disco ni en el registro.
     errorResponseBuilder: (_req, ctx) => ({
       statusCode: 429,
@@ -169,6 +199,19 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
 
   app.get('/api/health', { config: { rateLimit: false } }, async () => ({ status: 'ok' }));
 
+  const allowedIp = createAllowed(config.createFrom);
+  /**
+   * Con `CREATE_FROM`, todo lo que llega por Cloudflare es externo, aunque `TRUST_PROXY` estuviera mal puesto
+   * (sin él, la IP sería la del conector del túnel, que está en la red de confianza). Quien añada esas cabeceras
+   * a mano desde dentro solo consigue quitarse permisos.
+   */
+  const viaCloudflare = (req: FastifyRequest) =>
+    req.headers['cf-connecting-ip'] !== undefined || req.headers['cf-ray'] !== undefined;
+  const canCreate = (req: FastifyRequest) => !(config.createFrom && viaCloudflare(req)) && allowedIp(req.ip);
+
+  // Lo que la web necesita saber del despliegue. No revela la configuración de red, solo el resultado.
+  app.get('/api/config', async (req) => ({ publicUrl: config.publicUrl, createAllowed: canCreate(req) }));
+
   app.post<{ Body: CreateBody }>(
     '/api/secrets',
     {
@@ -177,6 +220,7 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
       config: { rateLimit: { max: config.createRateLimit, timeWindow: '1 minute' } },
     },
     async (req, reply) => {
+      if (!canCreate(req)) return reply.status(403).send({ error: 'create_forbidden' });
       const { ciphertext, verifier, linkVerifier, ttl, views } = req.body;
       if (!B64URL.test(ciphertext)) return reply.status(400).send({ error: 'invalid_request' });
 

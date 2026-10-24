@@ -30,6 +30,8 @@ export const es = {
     textLabel: 'Secreto',
     textPlaceholder: 'Una contraseña, una clave de API, una nota privada…',
     counter: '{n} de {max} caracteres',
+    createDisabled:
+      'En este servidor solo se pueden crear secretos desde la red de casa (o con ARIA). Desde aquí puedes abrir los que te envíen.',
     tooLong: 'El texto supera el máximo de {max} caracteres.',
     insertPassword: 'Generar contraseña segura',
     insertedPassword: 'Contraseña aleatoria insertada en el secreto.',
@@ -141,6 +143,7 @@ export const es = {
     too_large: 'El secreto es demasiado grande. Reduce el texto o el archivo.',
     rate_limited: 'Demasiados intentos seguidos. Espera {s} s y vuelve a probar.',
     storage_full: 'El servidor está lleno ahora mismo. Inténtalo de nuevo en unos minutos.',
+    create_forbidden: 'Desde aquí solo se pueden abrir secretos. Para crearlos, entra desde casa o pídeselo a ARIA.',
     network: 'No hay conexión con el servidor. Comprueba tu red y vuelve a intentarlo.',
     server: 'El servidor ha fallado. Inténtalo de nuevo en unos minutos.',
     crypto: 'Tu navegador no pudo cifrar el secreto. Prueba con una versión reciente.',

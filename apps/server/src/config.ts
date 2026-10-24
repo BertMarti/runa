@@ -1,3 +1,4 @@
+import net from 'node:net';
 import path from 'node:path';
 
 export interface Config {
@@ -18,6 +19,13 @@ export interface Config {
   logLevel: string;
   /** Envía HSTS: solo tiene sentido detrás de HTTPS. */
   hsts: boolean;
+  /**
+   * Redes desde las que se pueden **crear** secretos (IP o CIDR). `null` = desde cualquier sitio.
+   * Leer siempre es posible: así el servidor puede publicarse para leer sin que cualquiera cree secretos.
+   */
+  createFrom: string[] | null;
+  /** Base de los enlaces que genera la web (p. ej. el dominio público). `null` = el origen de la página. */
+  publicUrl: string | null;
 }
 
 function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number, max: number): number {
@@ -36,6 +44,37 @@ function trustProxy(raw: string | undefined): boolean | string {
   return raw; // lista de IP o CIDR separadas por comas (p. ej. «127.0.0.1,10.0.0.0/8»)
 }
 
+/** Lista de IP o CIDR («192.168.0.0/16, 172.16.0.0/12, ::1»). Lanza si alguna no es válida. */
+export function parseNetworks(raw: string | undefined): string[] | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const nets = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  for (const n of nets) {
+    const [ip = '', bits] = n.split('/');
+    const family = net.isIP(ip);
+    const max = family === 4 ? 32 : 128;
+    if (!family || (bits !== undefined && !(/^\d+$/.test(bits) && Number(bits) <= max))) {
+      throw new Error(`CREATE_FROM: «${n}» no es una IP ni un CIDR válido`);
+    }
+  }
+  return nets;
+}
+
+function parsePublicUrl(raw: string | undefined): string | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    throw new Error('PUBLIC_URL debe ser una URL completa, p. ej. https://runa.example.com');
+  }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) || url.username || url.password) {
+    throw new Error('PUBLIC_URL debe usar https (el cifrado del navegador lo exige) y no llevar usuario ni contraseña');
+  }
+  if (url.pathname !== '/' || url.search || url.hash) throw new Error('PUBLIC_URL no admite ruta, consulta ni fragmento');
+  return url.origin;
+}
+
 export function loadConfig(env = process.env): Config {
   const publicDir = env.PUBLIC_DIR ?? path.resolve(import.meta.dirname, '../../web/dist');
   return {
@@ -49,5 +88,7 @@ export function loadConfig(env = process.env): Config {
     openRateLimit: int(env, 'RATE_LIMIT_OPEN', 30, 1, 10_000),
     logLevel: env.LOG_LEVEL ?? 'info',
     hsts: env.HSTS === 'true',
+    createFrom: parseNetworks(env.CREATE_FROM),
+    publicUrl: parsePublicUrl(env.PUBLIC_URL),
   };
 }

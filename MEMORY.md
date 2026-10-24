@@ -57,6 +57,13 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - Despliegue en ARIA: `aria-runa` (sin puertos) + `aria-runa-tls` (Caddy en 8485 con la CA interna de ARIA y su `/internal/tls-ask`). La imagen de Caddy necesita `cap_add: NET_BIND_SERVICE` aunque escuche en un puerto alto: el binario lleva esa capacidad grabada y con `cap_drop: ALL` el kernel no lo ejecuta.
 - Probado de extremo a extremo: código del módulo → RUNA real tras el Caddy del módulo → Chromium real revela el secreto → reabrir da 404.
 
+## v0.2.0 «Puente» (2026-10-24)
+
+- Motivo: el usuario accede a ARIA por un dominio con Cloudflare Tunnel + Access y quiere RUNA dentro. Leer debe ser público (quien recibe no tiene cuenta), crear no (evitar que cualquiera aloje secretos o archivos con su dominio).
+- `CREATE_FROM` + `canCreate`: IP en la lista **y** sin cabeceras `Cf-Connecting-IP`/`Cf-Ray`. Diseño revisado con la sesión de ARIA: Fastify con `TRUST_PROXY` en CIDR ya toma la IP de más a la derecha que no es de confianza, pero las cabeceras de Cloudflare cubren un `TRUST_PROXY` mal puesto.
+- `clientIp`: el límite por IP usa `Cf-Connecting-IP` solo si la conexión llega desde una red privada (el conector).
+- `PUBLIC_URL` + `GET /api/config` (`{publicUrl, createAllowed}`); la web valida que `publicUrl` sea https (o http en localhost).
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.

@@ -12,6 +12,7 @@ export function errorMessage(err: unknown, t: Messages): string {
       case 'invalid_request':
       case 'too_large':
       case 'storage_full':
+      case 'create_forbidden':
       case 'network':
       case 'server':
         return t.errors[err.code];

@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { buildApp, rateLimitKey } from '../src/app.js';
-import type { Config } from '../src/config.js';
+import { buildApp, clientIp, rateLimitKey } from '../src/app.js';
+import { loadConfig, parseNetworks, type Config } from '../src/config.js';
 import { MAX_CIPHERTEXT_BYTES } from '../src/limits.js';
 import { SecretStore } from '../src/store.js';
 
@@ -23,6 +23,8 @@ function config(overrides: Partial<Config> = {}): Config {
     openRateLimit: 1000,
     logLevel: 'silent',
     hsts: false,
+    createFrom: null,
+    publicUrl: null,
     ...overrides,
   };
 }
@@ -287,5 +289,111 @@ describe('protecciones de abuso', () => {
     expect(full.statusCode).toBe(507);
     expect(full.json()).toEqual({ error: 'storage_full' });
     await tiny.close();
+  });
+});
+
+describe('despliegue tras un túnel (CREATE_FROM, PUBLIC_URL)', () => {
+  // Como en ARIA: cloudflared y Caddy en la red de Docker (172.16/12), la LAN en 192.168/16.
+  const tunnel = { createFrom: ['172.16.0.0/12', '192.168.0.0/16'], trustProxy: '172.16.0.0/12' };
+  const CONECTOR = '172.18.0.9';
+  let homelab: FastifyInstance;
+
+  beforeEach(async () => {
+    homelab = await buildApp(config({ ...tunnel, publicUrl: 'https://runa.example.com' }), store);
+  });
+  afterEach(async () => {
+    await homelab.close();
+  });
+
+  const crear = (remoteAddress: string, headers: Record<string, string> = {}) =>
+    homelab.inject({ method: 'POST', url: '/api/secrets', payload: body().payload, remoteAddress, headers });
+
+  it('ARIA (red de Docker) y la LAN a través de Caddy pueden crear', async () => {
+    expect((await crear('172.18.0.3')).statusCode).toBe(201);
+    expect((await crear('172.18.0.4', { 'x-forwarded-for': '192.168.1.20' })).statusCode).toBe(201);
+  });
+
+  it('por el túnel no se crea, aunque el cliente falsifique X-Forwarded-For', async () => {
+    // Cloudflare añade la IP real al final de lo que mande el cliente.
+    const spoof = { 'x-forwarded-for': '192.168.1.5, 203.0.113.9', 'cf-connecting-ip': '203.0.113.9', 'cf-ray': 'abc-MAD' };
+    const res = await crear(CONECTOR, spoof);
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: 'create_forbidden' });
+    // Sin cabeceras de Cloudflare: la IP es la de más a la derecha que no es de confianza (la real).
+    expect((await crear(CONECTOR, { 'x-forwarded-for': '192.168.1.5, 203.0.113.9' })).statusCode).toBe(403);
+  });
+
+  it('con TRUST_PROXY mal configurado, las cabeceras de Cloudflare siguen bloqueando la creación', async () => {
+    const mal = await buildApp(config({ ...tunnel, trustProxy: false }), store);
+    const res = await mal.inject({
+      method: 'POST',
+      url: '/api/secrets',
+      payload: body().payload,
+      remoteAddress: CONECTOR, // la IP del conector está en la red de confianza…
+      headers: { 'cf-ray': 'abc-MAD' }, // …pero viene por Cloudflare
+    });
+    expect(res.statusCode).toBe(403);
+    await mal.close();
+  });
+
+  it('desde fuera sí se lee: abrir funciona por el túnel', async () => {
+    const { proof, payload } = body();
+    const created = await homelab.inject({ method: 'POST', url: '/api/secrets', payload, remoteAddress: '172.18.0.3' });
+    const { id } = created.json<{ id: string }>();
+    const res = await homelab.inject({
+      method: 'POST',
+      url: `/api/secrets/${id}/open`,
+      payload: proof,
+      remoteAddress: CONECTOR,
+      headers: { 'cf-connecting-ip': '203.0.113.9', 'cf-ray': 'abc-MAD' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('/api/config dice a la web el dominio de los enlaces y si puede crear', async () => {
+    const dentro = await homelab.inject({ method: 'GET', url: '/api/config', remoteAddress: '172.18.0.4', headers: { 'x-forwarded-for': '192.168.1.20' } });
+    expect(dentro.json()).toEqual({ publicUrl: 'https://runa.example.com', createAllowed: true });
+    const fuera = await homelab.inject({ method: 'GET', url: '/api/config', remoteAddress: CONECTOR, headers: { 'cf-connecting-ip': '203.0.113.9' } });
+    expect(fuera.json()).toEqual({ publicUrl: 'https://runa.example.com', createAllowed: false });
+    expect(fuera.headers['cache-control']).toBe('no-store');
+  });
+
+  it('el límite de lectura va por la IP real de cada cliente del túnel', async () => {
+    const limitado = await buildApp(config({ ...tunnel, openRateLimit: 2 }), store);
+    const abrir = (ip: string) =>
+      limitado.inject({
+        method: 'POST',
+        url: `/api/secrets/${'A'.repeat(22)}/open`,
+        payload: { link: 'a'.repeat(64), token: 'a'.repeat(64) },
+        remoteAddress: CONECTOR,
+        headers: { 'cf-connecting-ip': ip },
+      });
+    expect([(await abrir('203.0.113.1')).statusCode, (await abrir('203.0.113.1')).statusCode]).toEqual([404, 404]);
+    expect((await abrir('203.0.113.1')).statusCode).toBe(429);
+    expect((await abrir('198.51.100.7')).statusCode).toBe(404); // otro cliente, otro contador
+    await limitado.close();
+  });
+
+  it('Cf-Connecting-IP solo se cree si la conexión llega desde una red privada', () => {
+    const req = (remote: string) => ({ headers: { 'cf-connecting-ip': '203.0.113.1' }, socket: { remoteAddress: remote }, ip: remote }) as never;
+    expect(clientIp(req(CONECTOR))).toBe('203.0.113.1');
+    expect(clientIp(req('198.51.100.50'))).toBe('198.51.100.50');
+  });
+});
+
+describe('configuración', () => {
+  it.each(['192.168.0.0/16', '172.16.0.0/12, 192.168.1.10', '::1, fc00::/7'])('acepta CREATE_FROM=%s', (v) => {
+    expect(parseNetworks(v)).not.toBeNull();
+  });
+  it.each(['192.168.0.0/33', 'red-de-casa', '10.0.0.0/x'])('rechaza CREATE_FROM=%s', (v) => {
+    expect(() => parseNetworks(v)).toThrow(/CREATE_FROM/);
+  });
+  it('PUBLIC_URL exige https y solo el origen', () => {
+    expect(loadConfig({ PUBLIC_URL: 'https://runa.example.com/' }).publicUrl).toBe('https://runa.example.com');
+    expect(loadConfig({ PUBLIC_URL: 'http://localhost:8484' }).publicUrl).toBe('http://localhost:8484');
+    for (const mala of ['http://runa.example.com', 'https://u:p@runa.example.com', 'https://runa.example.com/s', 'runa']) {
+      expect(() => loadConfig({ PUBLIC_URL: mala })).toThrow(/PUBLIC_URL/);
+    }
+    expect(loadConfig({}).createFrom).toBeNull();
   });
 });
