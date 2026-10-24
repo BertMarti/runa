@@ -50,6 +50,13 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - El primer CI de la imagen falló **a propósito**: Grype encontró CVE altas con arreglo en `distroless/nodejs24-debian12` (Node 24.14, OpenSSL 3.0.18, glibc antiguos). Se cambió a `distroless/nodejs24-debian13` (Node 24.22): 0 vulnerabilidades con arreglo.
 - Dependabot propuso Node 25 (no LTS), `@types/node` 26 y TypeScript 7 (incompatible con typescript-eslint). Se cerraron los PR y se ignoran esas versiones mayores en `dependabot.yml`.
 
+## Integración con ARIA (2026-10-24)
+
+- Módulo `modulos/runa/` en BertMarti/ARIA (PR desde `agent/runa/modulo-runa`, lo revisa e integra la sesión de ARIA). Protocolo v1 reimplementado en Python (`protocolo.py`, con `cryptography`).
+- Compatibilidad en los dos sentidos: ARIA prueba vectores cifrados por esta web y RUNA prueba vectores cifrados por Python (`compat-python.test.ts`). **Cualquier cambio del protocolo rompe ambos: requiere protocolo v2 y actualizar los dos repos.**
+- Despliegue en ARIA: `aria-runa` (sin puertos) + `aria-runa-tls` (Caddy en 8485 con la CA interna de ARIA y su `/internal/tls-ask`). La imagen de Caddy necesita `cap_add: NET_BIND_SERVICE` aunque escuche en un puerto alto: el binario lleva esa capacidad grabada y con `cap_drop: ALL` el kernel no lo ejecuta.
+- Probado de extremo a extremo: código del módulo → RUNA real tras el Caddy del módulo → Chromium real revela el secreto → reabrir da 404.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.

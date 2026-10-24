@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Añadido
+
+- Prueba de compatibilidad con la implementación en Python del módulo RUNA de ARIA (`apps/web/test/compat-python.test.ts`).
+
 ## [0.1.0] - 2026-10-24
 
 ### Añadido

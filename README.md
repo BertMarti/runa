@@ -143,6 +143,8 @@ git clone https://github.com/BertMarti/runa.git && cd runa && docker compose up 
 
 Ábrelo en <http://localhost:8484>. Para usarlo desde fuera de casa, sigue la [guía de despliegue](docs/DESPLIEGUE.md). Combina muy bien con [HEIMDALL](https://github.com/BertMarti/HEIMDALL), la VPN para entrar en casa desde fuera.
 
+> 🤖 **¿Usas [ARIA](https://github.com/BertMarti/ARIA)?** RUNA tiene módulo propio: pídele *«comparte la clave del wifi por RUNA»* o *«genérame una contraseña nueva y compártela»* y te devuelve el enlace. Ver `modulos/runa/` en ARIA.
+
 ---
 
 ## ✦ Para curiosos y técnicos
