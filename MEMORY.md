@@ -62,6 +62,7 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - Motivo: el usuario accede a ARIA por un dominio con Cloudflare Tunnel + Access y quiere RUNA dentro. Leer debe ser público (quien recibe no tiene cuenta), crear no (evitar que cualquiera aloje secretos o archivos con su dominio).
 - `CREATE_FROM` + `canCreate`: IP en la lista **y** sin cabeceras `Cf-Connecting-IP`/`Cf-Ray`. Diseño revisado con la sesión de ARIA: Fastify con `TRUST_PROXY` en CIDR ya toma la IP de más a la derecha que no es de confianza, pero las cabeceras de Cloudflare cubren un `TRUST_PROXY` mal puesto.
 - `clientIp`: el límite por IP usa `Cf-Connecting-IP` solo si la conexión llega desde una red privada (el conector).
+- 0.2.1: la comprobación de `CREATE_FROM` va en `onRequest` (antes de leer el cuerpo); la prueba de extremo a extremo con cuerpo no válido daba 400 en vez de 403.
 - `PUBLIC_URL` + `GET /api/config` (`{publicUrl, createAllowed}`); la web valida que `publicUrl` sea https (o http en localhost).
 
 ## Trampas conocidas

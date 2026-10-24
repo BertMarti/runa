@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.2.1] - 2026-10-24
+
+### Seguridad
+
+- Con `CREATE_FROM`, crear desde fuera se rechaza en `onRequest`, antes de leer y validar el cuerpo: un cliente externo ya no puede hacer que el servidor reciba y procese hasta 5,6 MB por petición. Antes respondía 400 si el cuerpo no era válido (y 403 si lo era).
+
 ## [0.2.0] - 2026-10-24
 
 ### Añadido
@@ -42,6 +48,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.2.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/BertMarti/runa/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/BertMarti/runa/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/BertMarti/runa/releases/tag/v0.1.0

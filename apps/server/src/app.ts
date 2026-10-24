@@ -218,9 +218,12 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
       bodyLimit: BODY_LIMIT,
       schema: { body: createBody },
       config: { rateLimit: { max: config.createRateLimit, timeWindow: '1 minute' } },
+      // Antes de leer el cuerpo: desde fuera no se llega a recibir ni validar (hasta 5,6 MB).
+      onRequest: async (req, reply) => {
+        if (!canCreate(req)) return reply.status(403).send({ error: 'create_forbidden' });
+      },
     },
     async (req, reply) => {
-      if (!canCreate(req)) return reply.status(403).send({ error: 'create_forbidden' });
       const { ciphertext, verifier, linkVerifier, ttl, views } = req.body;
       if (!B64URL.test(ciphertext)) return reply.status(400).send({ error: 'invalid_request' });
 

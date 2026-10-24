@@ -323,6 +323,18 @@ describe('despliegue tras un túnel (CREATE_FROM, PUBLIC_URL)', () => {
     expect((await crear(CONECTOR, { 'x-forwarded-for': '192.168.1.5, 203.0.113.9' })).statusCode).toBe(403);
   });
 
+  it('desde fuera se rechaza antes de leer el cuerpo (ni se valida ni se recibe entero)', async () => {
+    const res = await homelab.inject({
+      method: 'POST',
+      url: '/api/secrets',
+      payload: { basura: 'x'.repeat(100_000) },
+      remoteAddress: CONECTOR,
+      headers: { 'cf-connecting-ip': '203.0.113.9' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: 'create_forbidden' });
+  });
+
   it('con TRUST_PROXY mal configurado, las cabeceras de Cloudflare siguen bloqueando la creación', async () => {
     const mal = await buildApp(config({ ...tunnel, trustProxy: false }), store);
     const res = await mal.inject({
