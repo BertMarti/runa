@@ -150,3 +150,51 @@ describe('despliegue con lectura pública (v0.2)', () => {
     expect(await getConfig()).toEqual({ publicUrl: null, createAllowed: true });
   });
 });
+
+describe('revisión externa (R2, R4)', () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('R4: fuera de HTTPS avisa de que hace falta para cifrar', () => {
+    vi.stubGlobal('isSecureContext', false);
+    at('/');
+    render(<App lang="es" />);
+    expect(screen.getByText(/RUNA necesita HTTPS/)).toBeTruthy();
+  });
+
+  it('R4: en un contexto seguro no hay aviso', () => {
+    vi.stubGlobal('isSecureContext', true);
+    at('/');
+    render(<App lang="es" />);
+    expect(screen.queryByText(/RUNA necesita HTTPS/)).toBeNull();
+  });
+
+  it('R2: con un archivo de más de 1 MB no se ofrece caducar en 7 días', async () => {
+    fetchMock.mockImplementation(async () => json({ publicUrl: null, createAllowed: true }));
+    at('/');
+    const { container } = render(<App lang="es" />);
+    expect(screen.getByLabelText('7 días')).toBeTruthy();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(2 * 1024 * 1024)], 'grande.bin')] } });
+    expect(await screen.findByText(/la caducidad máxima es 1 día/)).toBeTruthy();
+    expect(screen.queryByLabelText('7 días')).toBeNull();
+    expect((screen.getByLabelText('1 día') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('R2: si se agota la cuota, dice cuántos minutos esperar', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === '/api/config') return json({ publicUrl: null, createAllowed: true });
+      if (url === '/api/secrets') return json({ error: 'quota_exceeded', retryAfterSeconds: 1800 }, 429);
+      return json({}, 500);
+    });
+    at('/');
+    render(<App lang="es" />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'hola' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cifrar y crear enlace' }));
+    expect(await screen.findByText(/Vuelve a intentarlo en 30 min/, {}, { timeout: 5000 })).toBeTruthy();
+  });
+});

@@ -9,6 +9,10 @@ export function errorMessage(err: unknown, t: Messages): string {
     switch (err.code) {
       case 'rate_limited':
         return fmt(t.errors.rate_limited, { s: err.retryAfterSeconds ?? 60 });
+      case 'quota_exceeded':
+        return fmt(t.errors.quota_exceeded, { m: Math.max(1, Math.ceil((err.retryAfterSeconds ?? 3600) / 60)) });
+      case 'ttl_too_long':
+        return t.errors.ttl_too_long;
       case 'invalid_request':
       case 'too_large':
       case 'storage_full':

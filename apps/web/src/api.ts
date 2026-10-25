@@ -14,6 +14,8 @@ export type ApiErrorCode =
   | 'rate_limited'
   | 'storage_full'
   | 'create_forbidden'
+  | 'quota_exceeded'
+  | 'ttl_too_long'
   | 'denied'
   | 'not_found'
   | 'network'
@@ -24,7 +26,7 @@ export class ApiError extends Error {
   readonly status: number;
   /** Solo en `denied` al abrir: intentos restantes (0 = destruido). */
   readonly attemptsLeft?: number;
-  /** Solo en `rate_limited`. */
+  /** Solo en `rate_limited` y `quota_exceeded`. */
   readonly retryAfterSeconds?: number;
 
   constructor(code: ApiErrorCode, status: number, extra: { attemptsLeft?: number; retryAfterSeconds?: number } = {}) {
@@ -73,7 +75,7 @@ async function toApiError(res: Response): Promise<ApiError> {
   const body = await readJson(res);
   switch (res.status) {
     case 400:
-      return new ApiError('invalid_request', 400);
+      return new ApiError(body.error === 'ttl_too_long' ? 'ttl_too_long' : 'invalid_request', 400);
     case 403:
       if (body.error === 'create_forbidden') return new ApiError('create_forbidden', 403);
       return new ApiError('denied', 403, { attemptsLeft: nonNegativeInt(body.attemptsLeft) });
@@ -84,7 +86,7 @@ async function toApiError(res: Response): Promise<ApiError> {
     case 429: {
       const header = Number.parseInt(res.headers.get('retry-after') ?? '', 10);
       const retry = nonNegativeInt(body.retryAfterSeconds) ?? (Number.isFinite(header) ? header : 60);
-      return new ApiError('rate_limited', 429, { retryAfterSeconds: retry });
+      return new ApiError(body.error === 'quota_exceeded' ? 'quota_exceeded' : 'rate_limited', 429, { retryAfterSeconds: retry });
     }
     case 507:
       return new ApiError('storage_full', 507);

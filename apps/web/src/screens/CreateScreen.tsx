@@ -10,7 +10,7 @@ import { RuneSeal, type SealState } from '../components/RuneSeal';
 import { Segmented } from '../components/Segmented';
 import { TrustBadges } from '../components/TrustBadges';
 import { useAnnounce } from '../components/Announcer';
-import { MAX_TEXT_CHARS, sealSecret, VIEW_OPTIONS, type Ttl } from '../crypto';
+import { LARGE_SECRET_BYTES, LARGE_SECRET_MAX_TTL, MAX_TEXT_CHARS, sealSecret, VIEW_OPTIONS, type Ttl } from '../crypto';
 import { fmt, useI18n } from '../i18n';
 import { delay, errorMessage } from '../lib/errors';
 import { formatNumber, TTLS, ttlLabel } from '../lib/format';
@@ -99,6 +99,11 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
   const errorId = `${id}-error`;
 
   const tooLong = text.length > MAX_TEXT_CHARS;
+  // Estimación por lo alto (3 bytes por carácter y margen para la cabecera): el servidor aplica la regla exacta.
+  const large = (file?.size ?? 0) + text.length * 3 + 512 > LARGE_SECRET_BYTES;
+  const ttlOptions = large ? TTLS.filter((v) => v <= LARGE_SECRET_MAX_TTL) : TTLS;
+  // Los secretos grandes caducan como mucho en un día; si se quita el archivo, vuelve la elección anterior.
+  const effectiveTtl: Ttl = large && ttl > LARGE_SECRET_MAX_TTL ? LARGE_SECRET_MAX_TTL : ttl;
   const empty = text.length === 0 && !file;
   const canSubmit = !empty && !tooLong && !sealing && deploy.createAllowed;
 
@@ -151,7 +156,7 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
         ciphertext: sealed.ciphertext,
         verifier: sealed.verifier,
         linkVerifier: sealed.linkVerifier,
-        ttl,
+        ttl: effectiveTtl,
         views,
       });
 
@@ -227,8 +232,8 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
         <Segmented
           legend={t.create.expiry}
           name={`${id}-ttl`}
-          value={ttl}
-          options={TTLS.map((v) => ({ value: v, label: ttlLabel(v, t) }))}
+          value={effectiveTtl}
+          options={ttlOptions.map((v) => ({ value: v, label: ttlLabel(v, t) }))}
           onChange={setTtl}
           disabled={sealing}
         />
@@ -241,6 +246,7 @@ function CreateForm({ sealing, onSealing, onCreated }: CreateFormProps) {
           disabled={sealing}
         />
       </div>
+      {large ? <p className="field__hint">{t.create.largeExpiry}</p> : null}
 
       <PassphraseField
         mode="create"

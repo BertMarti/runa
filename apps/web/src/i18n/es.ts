@@ -47,6 +47,7 @@ export const es = {
     fileAdded: 'Archivo adjunto: {name}.',
     fileRemoved: 'Archivo quitado.',
     expiry: 'Caduca en',
+    largeExpiry: 'Con archivos de más de 1 MB, la caducidad máxima es 1 día.',
     views: 'Lecturas permitidas',
     passLabel: 'Contraseña adicional',
     passOptional: 'opcional',
@@ -147,6 +148,10 @@ export const es = {
     network: 'No hay conexión con el servidor. Comprueba tu red y vuelve a intentarlo.',
     server: 'El servidor ha fallado. Inténtalo de nuevo en unos minutos.',
     crypto: 'Tu navegador no pudo cifrar el secreto. Prueba con una versión reciente.',
+    quota_exceeded: 'Has guardado muchos datos en poco tiempo. Vuelve a intentarlo en {m} min.',
+    ttl_too_long: 'Los secretos de más de 1 MB caducan como mucho en 1 día. Elige una caducidad más corta.',
+    insecure:
+      'RUNA necesita HTTPS (o localhost) para cifrar en tu navegador. Abre esta página con https:// o pide a quien la administra que lo active (ver docs/DESPLIEGUE.md).',
   },
   how: {
     title: 'Cómo funciona',

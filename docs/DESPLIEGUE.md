@@ -31,11 +31,27 @@ Y en `compose.yaml`:
 
 ```yaml
 environment:
-  TRUST_PROXY: "127.0.0.1"   # o la red de Docker de tu proxy, p. ej. "172.16.0.0/12"
+  TRUST_PROXY: "172.16.0.0/12"   # la pasarela de Docker: ver la nota de abajo
   HSTS: "true"
 ```
 
 `TRUST_PROXY` hace que el límite de peticiones use la IP real del cliente (`X-Forwarded-For`) **solo** si la petición viene de ese proxy. No lo pongas a `true` si el puerto de RUNA es accesible directamente: cualquiera podría falsear su IP.
+
+> **Ojo con `127.0.0.1`.** Aunque Caddy conecte a `127.0.0.1:8484`, dentro del contenedor la conexión llega
+> desde la **pasarela de Docker** (p. ej. `172.17.0.1`), no desde `127.0.0.1` (comprobado). Con
+> `TRUST_PROXY: "127.0.0.1"` RUNA no reconocería al proxy y todos los clientes compartirían un único límite.
+> Usa la red de Docker (`172.16.0.0/12`) o, si el proxy está en la misma red de Compose, su red.
+
+Si tu proxy no es Cloudflare, haz que borre `Cf-Connecting-IP`: con `TRUST_CF_FROM` vacío RUNA ya la ignora,
+pero así nadie depende de esa configuración.
+
+```caddyfile
+secretos.example.com {
+  reverse_proxy 127.0.0.1:8484 {
+    header_up -Cf-Connecting-IP
+  }
+}
+```
 
 ## Variables de entorno
 
@@ -48,6 +64,8 @@ environment:
 | `RATE_LIMIT_CREATE` | `20` | Secretos creados por minuto y por IP. |
 | `RATE_LIMIT_OPEN` | `30` | Aperturas o destrucciones por minuto y por IP. |
 | `TRUST_PROXY` | `false` | `true`, o lista de IP/CIDR de proxies de confianza. |
+| `TRUST_CF_FROM` | (vacío: nunca) | IP/CIDR de los conectores de **Cloudflare Tunnel** cuya cabecera `Cf-Connecting-IP` se cree para los límites. Solo si RUNA está detrás de `cloudflared`; detrás de cualquier otro proxy, déjalo vacío. |
+| `CREATE_QUOTA_MB` | `64` | MB cifrados que un mismo cliente puede guardar por hora (429 al superarlo). Evita que una sola IP llene `MAX_STORAGE_MB`. |
 | `HSTS` | `false` | Envía `Strict-Transport-Security` (solo detrás de HTTPS). |
 | `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug` o `silent`. |
 | `CREATE_FROM` | (vacío: desde cualquier sitio) | IP o CIDR desde las que se pueden **crear** secretos, p. ej. `172.16.0.0/12,192.168.0.0/16`. Leer siempre se puede. Con esta opción, todo lo que llega por Cloudflare (`Cf-Connecting-IP`/`Cf-Ray`) se trata como externo. |
@@ -79,15 +97,19 @@ Internet use tu RUNA para alojar secretos o archivos con tu dominio.
    ```yaml
    environment:
      TRUST_PROXY: "172.16.0.0/12"            # la red de Docker donde está el conector del túnel
+     TRUST_CF_FROM: "172.16.0.0/12"          # el conector del túnel: su Cf-Connecting-IP es la IP real
      CREATE_FROM: "172.16.0.0/12,192.168.0.0/16"
      PUBLIC_URL: "https://runa.example.com"
    ```
+
+   Si en esa misma red hay otro proxy (p. ej. un Caddy para la LAN), haz que borre `Cf-Connecting-IP`
+   (`header_up -Cf-Connecting-IP`): si no, un cliente de la LAN podría inventarse su IP.
 
 Resultado:
 
 - desde casa (o desde una aplicación de la red de Docker, como ARIA) se crean secretos, y sus enlaces llevan el dominio público;
 - desde fuera solo se abren: crear da 403 y la web lo explica;
-- los límites de lectura y de «destruir» van por la IP real de cada cliente (`Cf-Connecting-IP`).
+- los límites de lectura y de «destruir» van por la IP real de cada cliente (`Cf-Connecting-IP`, gracias a `TRUST_CF_FROM`).
 
 Si algún día Cloudflare queda bloqueado en tu red o tu país, los enlaces públicos no abrirán hasta que se
 levante el bloqueo.

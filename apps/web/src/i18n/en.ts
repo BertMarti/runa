@@ -44,6 +44,7 @@ export const en: Messages = {
     fileAdded: 'File attached: {name}.',
     fileRemoved: 'File removed.',
     expiry: 'Expires in',
+    largeExpiry: 'With files over 1 MB, the longest expiry is 1 day.',
     views: 'Views allowed',
     passLabel: 'Extra passphrase',
     passOptional: 'optional',
@@ -144,6 +145,10 @@ export const en: Messages = {
     network: 'Cannot reach the server. Check your connection and try again.',
     server: 'The server failed. Try again in a few minutes.',
     crypto: 'Your browser could not encrypt the secret. Try a recent version.',
+    quota_exceeded: 'You have stored a lot of data in a short time. Try again in {m} min.',
+    ttl_too_long: 'Secrets larger than 1 MB expire in 1 day at most. Pick a shorter expiry.',
+    insecure:
+      'RUNA needs HTTPS (or localhost) to encrypt in your browser. Open this page with https:// or ask whoever runs it to enable it (see docs/DESPLIEGUE.md).',
   },
   how: {
     title: 'How it works',

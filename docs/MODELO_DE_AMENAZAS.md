@@ -34,18 +34,29 @@ Análisis con la metodología **STRIDE**. Cada amenaza indica su mitigación y d
 | I5 | Fuga por `Referer` | `Referrer-Policy: no-referrer` (y el fragmento nunca va en el `Referer`). | `app.ts` (helmet) |
 | I6 | Restos de secretos borrados en disco | `PRAGMA secure_delete = ON` + `wal_checkpoint(TRUNCATE)` periódico. | `store.ts` |
 | I7 | Registros con datos sensibles | El registro solo guarda método, patrón de ruta y código: sin IP, sin id, sin cuerpo. | `app.ts` `logSerializers` |
-| I8 | XSS que robe secretos o claves | CSP estricta sin `unsafe-inline` ni `unsafe-eval`, **Trusted Types** obligatorios, React escapa el texto, ESLint prohíbe `innerHTML` y `dangerouslySetInnerHTML`. | `app.ts`, `eslint.config.js` |
+| I8 | XSS que robe secretos o claves | CSP estricta sin `unsafe-inline` ni `unsafe-eval`, **Trusted Types** obligatorios y `trusted-types 'none'` (nadie, ni una dependencia, puede crear una política), React escapa el texto, ESLint prohíbe `innerHTML` y `dangerouslySetInnerHTML`. | `app.ts`, `eslint.config.js` |
 | I9 | Un adjunto HTML se ejecuta en nuestro origen, o un nombre engañoso (`factura<U+202E>fdp.exe`) | La descarga usa siempre `application/octet-stream`; el nombre se sanea (rutas, control, bidireccionales, anchura cero, puntos finales). | `envelope.ts` `safeFileName`, `RevealScreen` |
 | I10 | Clickjacking | `frame-ancestors 'none'` + `X-Frame-Options: DENY`. | `app.ts` |
 | D0 | Usar una instancia publicada como alojamiento gratuito de secretos o archivos (con el dominio de quien la publica) | `CREATE_FROM`: crear solo desde redes de confianza; por el túnel, 403 aunque se falsifique `X-Forwarded-For` (gana la IP de más a la derecha que no es de confianza) o `TRUST_PROXY` esté mal puesto (cuentan las cabeceras de Cloudflare). | `app.ts` `canCreate`, pruebas «despliegue tras un túnel» |
-| D1 | Llenar el disco | Tamaño máximo por secreto, tope global (`MAX_STORAGE_MB`, responde 507), caducidad máxima de 7 días y purga cada minuto. | `app.ts`, `server.ts` |
-| D2 | Inundar de peticiones | Límite por IP (por /64 en IPv6): 20 creaciones/min, 30 aperturas/min, 120 peticiones a la API/min. La web estática no cuenta, para no dejar sin página a una oficina tras una sola IP. | `app.ts` (rate-limit, `rateLimitKey`) |
+| D1 | Llenar el disco | Tamaño máximo por secreto, tope global (`MAX_STORAGE_MB`, responde 507), **cuota por cliente** (`CREATE_QUOTA_MB`, 64 MB/h, 429), caducidad máxima de 7 días y de **1 día para secretos de más de 1 MiB**, y purga cada minuto. | `app.ts`, `quota.ts`, `server.ts`, tests «cuotas» |
+| D2 | Inundar de peticiones | Límite por IP (por /64 en IPv6): 20 creaciones/min, 30 aperturas/min, 120 peticiones a la API/min. La web estática no cuenta, para no dejar sin página a una oficina tras una sola IP. La IP la da `Cf-Connecting-IP` **solo** si la conexión viene de un conector declarado en `TRUST_CF_FROM`; detrás de otro proxy esa cabecera no se cree (la escribiría el cliente). | `app.ts` (rate-limit, `rateLimitKey`, `clientIp`), test R1 |
 | D3 | Cuerpos gigantes o JSON malicioso | `bodyLimit` por ruta, esquema JSON estricto (`additionalProperties: false`, sin coerción de tipos). | `app.ts` |
 | E1 | Escalada o persistencia dentro del contenedor | Imagen **distroless** sin shell, usuario `nonroot`, código propiedad de root (no modificable por el proceso), sistema de archivos de solo lectura, `cap_drop: ALL`, `no-new-privileges`, límites de memoria y procesos. | `Dockerfile`, `compose.yaml` |
 | E2 | Inyección SQL | Solo sentencias preparadas; ningún SQL construido con texto del usuario. | `store.ts` |
 | SC1 | Dependencia comprometida | Pocas dependencias y **cero módulos nativos** en producción (SQLite integrado en Node 24). **Ningún script de instalación se ejecuta** en desarrollo, CI ni Docker (`.npmrc` `ignore-scripts=true`, `npm ci --ignore-scripts`). `npm audit` en CI, Dependabot con 7 días de espera, revisión de dependencias en cada PR. Imágenes base fijadas por digest. | `.npmrc`, `ci.yml`, `Dockerfile`, `dependabot.yml` |
 | SC2 | Action de GitHub comprometida | Todas las actions **fijadas por SHA**, token con permisos mínimos, `persist-credentials: false`, OpenSSF Scorecard. | `.github/workflows/` |
 | SC3 | Secretos subidos al repositorio | gitleaks en cada push y PR. | `ci.yml` |
+
+## Revisión externa (v0.3.0)
+
+Otra sesión revisó el código en solo lectura buscando lo que no cubría la auditoría de la v0.1.0:
+
+| ID | Gravedad | Hallazgo | Resolución |
+|---|---|---|---|
+| R1 | media | `Cf-Connecting-IP` se creía desde cualquier red privada: detrás de Caddy o nginx, un cliente se inventaba una IP por petición y esquivaba los límites. Además, la guía recomendaba `TRUST_PROXY: "127.0.0.1"`, pero dentro del contenedor la conexión llega desde la pasarela de Docker (comprobado), así que todos compartían un límite. | `TRUST_CF_FROM` explícito (vacío por defecto); guía corregida y `header_up -Cf-Connecting-IP` para otros proxies. Test R1. |
+| R2 | media | Sin cuota de bytes, una IP llenaba 512 MB en ~6 min y dejaba el servicio sin espacio 7 días. | Cuota por cliente y hora (`CREATE_QUOTA_MB`) y caducidad máxima de 1 día para secretos de más de 1 MiB (servidor y web). Tests «cuotas» y `quota.test.ts`. |
+| R3 | baja | Trusted Types obligatorios, pero se podía crear cualquier política. | `trusted-types 'none'`. Test de cabeceras. |
+| R4 | baja | Por HTTP fuera de `localhost` no hay Web Crypto y el error parecía culpa del navegador. | Aviso claro al cargar («RUNA necesita HTTPS»). Test. |
 
 ## Fuera de alcance (riesgos aceptados)
 

@@ -9,6 +9,8 @@ import type { Config } from './config.js';
 import {
   GCM_OVERHEAD_BYTES,
   ID_PATTERN,
+  LARGE_SECRET_BYTES,
+  LARGE_SECRET_MAX_TTL,
   MAX_CIPHERTEXT_B64,
   MAX_VIEWS,
   MIN_VIEWS,
@@ -16,6 +18,7 @@ import {
   TOKEN_PATTERN,
   TTL_OPTIONS,
 } from './limits.js';
+import { ByteQuota } from './quota.js';
 import type { SecretStore } from './store.js';
 
 const B64URL = /^[A-Za-z0-9_-]+$/;
@@ -79,6 +82,8 @@ const CSP = {
   objectSrc: ["'none'"],
   workerSrc: ["'self'"],
   requireTrustedTypesFor: ["'script'"],
+  // La web no crea ninguna política de Trusted Types: nadie (ni una dependencia) puede crear una.
+  trustedTypes: ["'none'"],
   upgradeInsecureRequests: null,
 };
 
@@ -105,15 +110,14 @@ export function rateLimitKey(ip: string): string {
   return `${groups.slice(0, 4).map((g) => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/64`;
 }
 
-const PRIVATE = createAllowed(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', 'fc00::/7', '::1']);
-
 /**
  * IP para el límite de peticiones. Por el túnel de Cloudflare, `Cf-Connecting-IP` es la IP real (Cloudflare la
- * pone y descarta la del cliente); solo se cree si la conexión llega desde una red privada (el conector).
+ * pone y descarta la del cliente). Solo se cree si la conexión llega de un conector declarado en `TRUST_CF_FROM`:
+ * detrás de cualquier otro proxy, la cabecera la escribe el cliente y le bastaría para saltarse los límites.
  */
-export function clientIp(req: FastifyRequest): string {
+export function clientIp(req: FastifyRequest, trustCf: (ip: string) => boolean = () => false): string {
   const cf = req.headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && net.isIP(cf) && PRIVATE(req.socket.remoteAddress ?? '')) return cf;
+  if (typeof cf === 'string' && net.isIP(cf) && trustCf(req.socket.remoteAddress ?? '')) return cf;
   return req.ip;
 }
 
@@ -142,6 +146,10 @@ const logSerializers = {
 };
 
 export async function buildApp(config: Config, store: SecretStore): Promise<FastifyInstance> {
+  const trustCf = config.trustCfFrom ? createAllowed(config.trustCfFrom) : () => false;
+  /** Clave de cliente para límites y cuotas (IPv6 por /64). */
+  const clientKey = (req: FastifyRequest) => rateLimitKey(clientIp(req, trustCf));
+  const quota = new ByteQuota(config.createQuotaBytes);
   const app = Fastify({
     logger: config.logLevel === 'silent' ? false : { level: config.logLevel, serializers: logSerializers },
     trustProxy: config.trustProxy,
@@ -178,7 +186,7 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
     timeWindow: '1 minute',
     // La web estática no cuenta: una oficina tras una sola IP no debe quedarse sin página.
     allowList: (req) => !API_PATH.test(req.url),
-    keyGenerator: (req) => rateLimitKey(clientIp(req)),
+    keyGenerator: clientKey,
     // Solo en memoria: las IP no se escriben en disco ni en el registro.
     errorResponseBuilder: (_req, ctx) => ({
       statusCode: 429,
@@ -231,9 +239,19 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
       // tamaño guardado nunca revela la longitud real del secreto.
       const bytes = Buffer.from(ciphertext, 'base64url');
       if (!VALID_SIZES.has(bytes.length)) return reply.status(400).send({ error: 'invalid_request' });
+      // Los secretos grandes no pueden ocupar el almacenamiento una semana entera.
+      if (bytes.length - GCM_OVERHEAD_BYTES > LARGE_SECRET_BYTES && ttl > LARGE_SECRET_MAX_TTL) {
+        return reply.status(400).send({ error: 'ttl_too_long', maxTtl: LARGE_SECRET_MAX_TTL });
+      }
       if (store.usedBytes() + bytes.length > config.maxStorageBytes) {
         req.log.warn('almacenamiento lleno');
         return reply.status(507).send({ error: 'storage_full' });
+      }
+      // Cuota por cliente y hora: nadie puede llenar el almacenamiento de todos.
+      const wait = quota.take(clientKey(req), bytes.length);
+      if (wait > 0) {
+        reply.header('Retry-After', String(wait));
+        return reply.status(429).send({ statusCode: 429, error: 'quota_exceeded', retryAfterSeconds: wait });
       }
 
       const created = store.create({

@@ -1,10 +1,25 @@
 import { AnnouncerProvider } from './components/Announcer';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
-import { I18nProvider, type Lang } from './i18n';
+import { Icon } from './components/Icon';
+import { I18nProvider, useI18n, type Lang } from './i18n';
 import { useRoute } from './router';
 import { CreateScreen } from './screens/CreateScreen';
 import { RevealScreen } from './screens/RevealScreen';
+
+/** Fuera de HTTPS (o localhost) el navegador no da acceso a Web Crypto: sin esto, el fallo parecería del navegador. */
+export const canEncrypt = (): boolean => globalThis.isSecureContext === true && Boolean(globalThis.crypto?.subtle);
+
+function InsecureNotice() {
+  const { t } = useI18n();
+  if (canEncrypt()) return null;
+  return (
+    <p className="alert alert--error" role="alert">
+      <Icon name="lock" />
+      <span>{t.errors.insecure}</span>
+    </p>
+  );
+}
 
 function Screen() {
   const route = useRoute();
@@ -20,6 +35,7 @@ export function App({ lang }: { lang?: Lang }) {
         <div className="page">
           <Header />
           <main className="main" id="main">
+            <InsecureNotice />
             <Screen />
           </main>
           <Footer />

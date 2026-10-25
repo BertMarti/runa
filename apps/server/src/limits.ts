@@ -24,6 +24,13 @@ export const MIN_CIPHERTEXT_BYTES = 1024 + GCM_OVERHEAD_BYTES;
 /** Caducidades permitidas, en segundos: 5 min, 1 h, 1 día, 7 días. */
 export const TTL_OPTIONS = [300, 3600, 86_400, 604_800] as const;
 
+/**
+ * Secretos grandes (más de 1 MiB rellenado, es decir, el bloque de 4 MiB): caducan como mucho en 1 día, para que
+ * no puedan ocupar el almacenamiento una semana entera.
+ */
+export const LARGE_SECRET_BYTES = 1024 * 1024;
+export const LARGE_SECRET_MAX_TTL = 86_400;
+
 export const MIN_VIEWS = 1;
 export const MAX_VIEWS = 10;
 
