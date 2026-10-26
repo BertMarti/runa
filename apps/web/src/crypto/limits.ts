@@ -19,6 +19,13 @@ export const PBKDF2_ITERATIONS = 600_000;
 export const TTL_OPTIONS = [300, 3600, 86_400, 604_800] as const;
 export type Ttl = (typeof TTL_OPTIONS)[number];
 
+/**
+ * Secretos grandes (más de 1 MiB rellenado, es decir, el bloque de 4 MiB): caducan como mucho en 1 día, para que
+ * no puedan ocupar el almacenamiento una semana entera.
+ */
+export const LARGE_SECRET_BYTES = 1024 * 1024;
+export const LARGE_SECRET_MAX_TTL = 86_400;
+
 export const VIEW_OPTIONS = [1, 2, 3, 5, 10] as const;
 
 export const MAX_FAILED_ATTEMPTS = 5;

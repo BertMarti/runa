@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-10-24 por lead (v0.1.0)
+Última actualización: 2026-10-25 por lead (v0.3.0)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -70,6 +70,13 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - Problema real (visto en los registros de aria-app): el usuario entra en ARIA por su dominio también desde casa, así que el mosaico lo llevaba al RUNA público, donde crear está prohibido.
 - Solución (ARIA #3 y #4, fusionados y desplegados): el módulo sirve `/api/modulos/runa/crear` con sesión y CSP propia. La página cifra en el navegador (`modulos/runa/web/runa-cripto.mjs`, bytes idénticos a `protocolo.py`) y `POST /api/modulos/runa/secretos` reenvía solo el cifrado a RUNA por la red interna, con un límite de 10 por minuto por persona.
 - Comprobado en producción en el Chrome del usuario: creado en ARIA → revelado por el dominio público desde Internet → 404 al reabrir.
+
+## v0.3.0 «Revisión externa» (2026-10-25)
+
+- Otra sesión («Revisión de repositorios GitHub») revisó en solo lectura; hallazgos R1-R4 corregidos con tests (ver MODELO_DE_AMENAZAS, «Revisión externa»).
+- **`TRUST_CF_FROM`** (nuevo, vacío por defecto): `Cf-Connecting-IP` solo se cree desde esos conectores. ARIA debe añadirlo (`172.16.0.0/12`) al actualizar desde 0.2.1 y hacer que su `runa-tls` borre `Cf-Connecting-IP`. Se avisó a la sesión de ARIA.
+- **Cuota** `CREATE_QUOTA_MB` (64 MB/h por cliente) y caducidad máxima de 1 día para secretos de más de 1 MiB (el módulo de ARIA que crea con 7 días y archivos grandes recibirá `ttl_too_long`).
+- Comprobado: con `-p 127.0.0.1:8484:8080`, el contenedor ve la conexión desde `::ffff:172.17.0.1` (pasarela de Docker), no desde `127.0.0.1`.
 
 ## Trampas conocidas
 

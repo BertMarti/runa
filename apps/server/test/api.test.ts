@@ -25,6 +25,8 @@ function config(overrides: Partial<Config> = {}): Config {
     hsts: false,
     createFrom: null,
     publicUrl: null,
+    trustCfFrom: null,
+    createQuotaBytes: 64 * 1024 * 1024,
     ...overrides,
   };
 }
@@ -202,6 +204,7 @@ describe('cabeceras de seguridad', () => {
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("require-trusted-types-for 'script'");
+    expect(csp).toContain("trusted-types 'none'");
     expect(csp).not.toContain('unsafe-inline');
     expect(csp).not.toContain('unsafe-eval');
     expect(res.headers['x-frame-options']).toBe('DENY');
@@ -294,7 +297,7 @@ describe('protecciones de abuso', () => {
 
 describe('despliegue tras un túnel (CREATE_FROM, PUBLIC_URL)', () => {
   // Como en ARIA: cloudflared y Caddy en la red de Docker (172.16/12), la LAN en 192.168/16.
-  const tunnel = { createFrom: ['172.16.0.0/12', '192.168.0.0/16'], trustProxy: '172.16.0.0/12' };
+  const tunnel = { createFrom: ['172.16.0.0/12', '192.168.0.0/16'], trustProxy: '172.16.0.0/12', trustCfFrom: ['172.16.0.0/12'] };
   const CONECTOR = '172.18.0.9';
   let homelab: FastifyInstance;
 
@@ -386,10 +389,30 @@ describe('despliegue tras un túnel (CREATE_FROM, PUBLIC_URL)', () => {
     await limitado.close();
   });
 
-  it('Cf-Connecting-IP solo se cree si la conexión llega desde una red privada', () => {
+  it('Cf-Connecting-IP solo se cree si la conexión llega de un conector declarado (TRUST_CF_FROM)', () => {
     const req = (remote: string) => ({ headers: { 'cf-connecting-ip': '203.0.113.1' }, socket: { remoteAddress: remote }, ip: remote }) as never;
-    expect(clientIp(req(CONECTOR))).toBe('203.0.113.1');
-    expect(clientIp(req('198.51.100.50'))).toBe('198.51.100.50');
+    const conector = (ip: string) => ip === CONECTOR;
+    expect(clientIp(req(CONECTOR), conector)).toBe('203.0.113.1');
+    expect(clientIp(req('198.51.100.50'), conector)).toBe('198.51.100.50');
+    // Por defecto no se cree nunca, aunque venga de una red privada.
+    expect(clientIp(req(CONECTOR))).toBe(CONECTOR);
+  });
+
+  it('R1: detrás de otro proxy, inventarse Cf-Connecting-IP no esquiva el límite', async () => {
+    // Caddy o nginx en la red de Docker, sin TRUST_CF_FROM: cada petición trae una IP falsa distinta.
+    const proxy = await buildApp(config({ trustProxy: '172.16.0.0/12', openRateLimit: 2 }), store);
+    const abrir = (falsa: string) =>
+      proxy.inject({
+        method: 'POST',
+        url: `/api/secrets/${'A'.repeat(22)}/open`,
+        payload: { link: 'a'.repeat(64), token: 'a'.repeat(64) },
+        remoteAddress: '172.17.0.1',
+        headers: { 'x-forwarded-for': '198.51.100.7', 'cf-connecting-ip': falsa },
+      });
+    const codes = [];
+    for (const ip of ['203.0.113.1', '203.0.113.2', '203.0.113.3']) codes.push((await abrir(ip)).statusCode);
+    expect(codes).toEqual([404, 404, 429]);
+    await proxy.close();
   });
 });
 
@@ -400,6 +423,16 @@ describe('configuración', () => {
   it.each(['192.168.0.0/33', 'red-de-casa', '10.0.0.0/x'])('rechaza CREATE_FROM=%s', (v) => {
     expect(() => parseNetworks(v)).toThrow(/CREATE_FROM/);
   });
+  it('TRUST_CF_FROM: por defecto no se cree a nadie; las redes se validan', () => {
+    expect(loadConfig({}).trustCfFrom).toBeNull();
+    expect(loadConfig({ TRUST_CF_FROM: '172.16.0.0/12' }).trustCfFrom).toEqual(['172.16.0.0/12']);
+    expect(() => loadConfig({ TRUST_CF_FROM: 'red-de-casa' })).toThrow(/TRUST_CF_FROM/);
+  });
+  it('CREATE_QUOTA_MB: 64 por defecto', () => {
+    expect(loadConfig({}).createQuotaBytes).toBe(64 * 1024 * 1024);
+    expect(loadConfig({ CREATE_QUOTA_MB: '8' }).createQuotaBytes).toBe(8 * 1024 * 1024);
+    expect(() => loadConfig({ CREATE_QUOTA_MB: '0' })).toThrow(/CREATE_QUOTA_MB/);
+  });
   it('PUBLIC_URL exige https y solo el origen', () => {
     expect(loadConfig({ PUBLIC_URL: 'https://runa.example.com/' }).publicUrl).toBe('https://runa.example.com');
     expect(loadConfig({ PUBLIC_URL: 'http://localhost:8484' }).publicUrl).toBe('http://localhost:8484');
@@ -407,5 +440,39 @@ describe('configuración', () => {
       expect(() => loadConfig({ PUBLIC_URL: mala })).toThrow(/PUBLIC_URL/);
     }
     expect(loadConfig({}).createFrom).toBeNull();
+  });
+});
+
+describe('cuotas (revisión externa R2)', () => {
+  let quota: FastifyInstance;
+  let qstore: SecretStore;
+  const bloque = 1024 + 28;
+  beforeEach(async () => {
+    qstore = new SecretStore(':memory:');
+    quota = await buildApp(config({ createQuotaBytes: 3 * bloque }), qstore);
+  });
+  afterEach(async () => {
+    await quota.close();
+    qstore.close();
+  });
+
+  it('cada cliente tiene una cuota de bytes por hora', async () => {
+    const crear = (remoteAddress: string) => quota.inject({ method: 'POST', url: '/api/secrets', payload: body().payload, remoteAddress });
+    for (let i = 0; i < 3; i++) expect((await crear('198.51.100.7')).statusCode).toBe(201);
+    const lleno = await crear('198.51.100.7');
+    expect(lleno.statusCode).toBe(429);
+    expect(lleno.json()).toMatchObject({ error: 'quota_exceeded' });
+    expect(Number(lleno.headers['retry-after'])).toBeGreaterThan(3000);
+    // Otro cliente no se ve afectado.
+    expect((await crear('198.51.100.8')).statusCode).toBe(201);
+  });
+
+  it('un secreto grande caduca como mucho en un día', async () => {
+    const grande = (ttl: number) =>
+      app.inject({ method: 'POST', url: '/api/secrets', payload: body({ ciphertext: randomBytes(MAX_CIPHERTEXT_BYTES).toString('base64url'), ttl }).payload });
+    const semana = await grande(604_800);
+    expect(semana.statusCode).toBe(400);
+    expect(semana.json()).toMatchObject({ error: 'ttl_too_long', maxTtl: 86_400 });
+    expect((await grande(86_400)).statusCode).toBe(201);
   });
 });

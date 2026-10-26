@@ -26,6 +26,13 @@ export interface Config {
   createFrom: string[] | null;
   /** Base de los enlaces que genera la web (p. ej. el dominio público). `null` = el origen de la página. */
   publicUrl: string | null;
+  /**
+   * Redes de los conectores de Cloudflare Tunnel cuya cabecera `Cf-Connecting-IP` se cree para el límite de
+   * peticiones. `null` (por defecto) = nunca: detrás de otro proxy, cualquiera podría inventarse la cabecera.
+   */
+  trustCfFrom: string[] | null;
+  /** Bytes cifrados que un mismo cliente puede guardar por hora. */
+  createQuotaBytes: number;
 }
 
 function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number, max: number): number {
@@ -45,7 +52,7 @@ function trustProxy(raw: string | undefined): boolean | string {
 }
 
 /** Lista de IP o CIDR («192.168.0.0/16, 172.16.0.0/12, ::1»). Lanza si alguna no es válida. */
-export function parseNetworks(raw: string | undefined): string[] | null {
+export function parseNetworks(raw: string | undefined, name = 'CREATE_FROM'): string[] | null {
   if (raw === undefined || raw.trim() === '') return null;
   const nets = raw.split(',').map((s) => s.trim()).filter(Boolean);
   for (const n of nets) {
@@ -53,7 +60,7 @@ export function parseNetworks(raw: string | undefined): string[] | null {
     const family = net.isIP(ip);
     const max = family === 4 ? 32 : 128;
     if (!family || (bits !== undefined && !(/^\d+$/.test(bits) && Number(bits) <= max))) {
-      throw new Error(`CREATE_FROM: «${n}» no es una IP ni un CIDR válido`);
+      throw new Error(`${name}: «${n}» no es una IP ni un CIDR válido`);
     }
   }
   return nets;
@@ -90,5 +97,7 @@ export function loadConfig(env = process.env): Config {
     hsts: env.HSTS === 'true',
     createFrom: parseNetworks(env.CREATE_FROM),
     publicUrl: parsePublicUrl(env.PUBLIC_URL),
+    trustCfFrom: parseNetworks(env.TRUST_CF_FROM, 'TRUST_CF_FROM'),
+    createQuotaBytes: int(env, 'CREATE_QUOTA_MB', 64, 1, 1_048_576) * 1024 * 1024,
   };
 }
