@@ -77,6 +77,7 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **`TRUST_CF_FROM`** (nuevo, vacío por defecto): `Cf-Connecting-IP` solo se cree desde esos conectores. ARIA debe añadirlo (`172.16.0.0/12`) al actualizar desde 0.2.1 y hacer que su `runa-tls` borre `Cf-Connecting-IP`. Se avisó a la sesión de ARIA.
 - **Cuota** `CREATE_QUOTA_MB` (64 MB/h por cliente) y caducidad máxima de 1 día para secretos de más de 1 MiB (el módulo de ARIA que crea con 7 días y archivos grandes recibirá `ttl_too_long`).
 - Comprobado: con `-p 127.0.0.1:8484:8080`, el contenedor ve la conexión desde `::ffff:172.17.0.1` (pasarela de Docker), no desde `127.0.0.1`.
+- **Publicada** (2026-10-26): PR #3 fusionada, release v0.3.0 e imagen `ghcr.io/bertmarti/runa:0.3.0` (amd64 y arm64) comprobada en la Raspberry. Para ARIA quedó abierta la PR BertMarti/ARIA#5 (imagen 0.3.0, `TRUST_CF_FROM` y `header_up -Cf-Connecting-IP` en `runa-tls`), pendiente de que la sesión de ARIA la integre. El `docker-compose.override.yml` real de ARIA hay que cambiarlo a mano al desplegar.
 
 ## Trampas conocidas
 
