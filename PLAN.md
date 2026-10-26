@@ -30,7 +30,13 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 - [x] Leer desde fuera, crear solo desde casa (`CREATE_FROM`, `PUBLIC_URL`, `/api/config`) para publicar RUNA por un túnel.
 - [x] Integración con ARIA (módulo `modulos/runa/`).
 
-## v0.3.0 «Mensajero» — siguiente
+## v0.3.0 «Revisión externa» — ✅ hecha
+
+- [x] `TRUST_CF_FROM`: `Cf-Connecting-IP` solo desde conectores declarados (R1).
+- [x] Cuota de bytes por cliente y hora, y caducidad máxima de 1 día para secretos grandes (R2).
+- [x] `trusted-types 'none'` (R3) y aviso cuando falta HTTPS (R4).
+
+## v0.4.0 «Mensajero» — siguiente
 
 - [ ] **Petición de secreto**: genero un enlace para que *otra persona* me envíe un secreto cifrado con mi clave (flujo inverso, útil para pedir credenciales a un cliente).
 - [ ] **PWA instalable** con service worker propio (sin caché de la API).
@@ -38,7 +44,7 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 - [ ] Tests end-to-end con Playwright (crear → revelar → 404) en CI.
 - [ ] Captura y vídeo corto para el README generados por script.
 
-## v0.4.0 «Forja» — más adelante
+## v0.5.0 «Forja» — más adelante
 
 - [ ] **CLI** `runa send < fichero` / `runa open <enlace>` en Go, compatible con el protocolo v1.
 - [x] Integración con **ARIA** (adelantada): módulo `modulos/runa/` con el protocolo en Python, herramientas `runa_compartir` y `runa_generar`, mosaico y aviso de caída. Compatibilidad comprobada en los dos sentidos (`apps/web/test/compat-python.test.ts`).
