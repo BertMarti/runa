@@ -58,6 +58,26 @@ Análisis con la metodología **STRIDE**. Cada amenaza indica su mitigación y d
 | Q5 | Claves públicas maliciosas (orden pequeño) | Web Crypto rechaza el secreto compartido nulo; la sal liga `E ‖ A`. | `request.ts`, test |
 | Q6 | La clave privada queda a la vista | Va solo en el fragmento; la página no llama a la API al cargar y la borra de la barra al recoger o cancelar. No se guarda en almacenamiento. | `RequestScreens.tsx`, pruebas e2e |
 | Q7 | Alguien con el enlace de envío lo rellena antes que la persona correcta | Riesgo aceptado: el enlace de envío debe llegar por un canal fiable. Quien envía ve «ya recibió un secreto» si llega tarde. | `docs/PROTOCOLO.md` |
+| Q8 | Quien tiene el enlace de envío sabe si ya se recogió (409 antes, 404 después) y cuándo caduca la petición | Riesgo aceptado: es información sobre su propio envío, y a cambio recibe el aviso de Q7. Con solo el id no se aprende nada. | `app.ts` |
+| Q9 | Oráculo del disco o gasto de cuota ajena rellenando con ids inventados | La prueba se comprueba **antes** que el espacio y la cuota (`peekFill`): sin ella, 404 y nada cambia. | `app.ts`, tests «auditoría (P1)» |
+| Q10 | Crear miles de peticiones vacías | Límite de 20 por minuto e IP, purga al caducar y cada petición viva cuenta 256 B en el tope de almacenamiento. | `store.ts` `REQUEST_ROW_BYTES` |
+
+### Auditoría independiente de las peticiones (v0.4.0)
+
+Otro modelo (Fable) revisó el diseño y el código en solo lectura, sin ver estas conclusiones:
+
+| ID | Gravedad | Hallazgo | Resolución |
+|---|---|---|---|
+| P1 | media | Al rellenar, el 507 y la cuota se evaluaban antes de la prueba: oráculo del disco y gasto de cuota ajena. | `peekFill` primero (Q9) y tests. |
+| P2 | baja | Clave efímera exportable sin necesidad; bytes PKCS#8 vivos en el estado de la recogida. | Efímera no exportable; la recogida importa la clave una vez y pone sus bytes a cero (test). |
+| P3 | baja | Tras recoger no había «Olvidar». | Botón «Olvidar y cerrar» (test). |
+| P4 | info | Acuse de lectura para quien envía. | Documentado (Q8). |
+| P5 | info | Las peticiones vacías no contaban en el almacenamiento. | 256 B por petición viva (Q10). |
+| P6 | info | Docs: qué recibe el servidor y nivel de seguridad de X25519. | Corregido en PROTOCOLO. |
+
+Comprobado por la auditoría: separación de dominios (info y AAD), sin reutilización de nonce, 7 puntos de orden
+pequeño rechazados, PKCS#8 de formato fijo, transacciones sin carreras, ninguna llamada a la API al cargar,
+fragmentos borrados tras usarse y respuestas validadas.
 
 ## Revisión externa (v0.3.0)
 

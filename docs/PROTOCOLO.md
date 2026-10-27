@@ -93,7 +93,7 @@ El id es lo que ven los intermediarios: registros de un proxy o una CDN, bots de
 
 ## Lo que el servidor **nunca** ve
 
-`K`, la contraseña, `P`, `kEnc` y el contenido. `token` y `link` solo llegan al abrir o destruir, y no permiten derivar nada de lo anterior.
+`K`, la contraseña, `P`, `kEnc` y el contenido. `token` y `link` solo llegan al abrir o destruir, y no permiten derivar nada de lo anterior. En las peticiones, tampoco `a`, `A`, `e` ni `z` (ver arriba).
 
 ## Pedir un secreto
 
@@ -145,11 +145,15 @@ P importa `a` (la clave pública `A` sale del JWK de la privada), deriva `openPr
 
 ### Propiedades
 
-- El servidor nunca ve `a`, `A`, `e`, `z` ni el contenido.
+- El servidor nunca ve `a`, `A`, `e`, `z` ni el contenido. Sí recibe `E` (pública y efímera), `sendProof` al rellenar
+  y `openProof` al recoger: son salidas de HKDF y no permiten obtener ninguna clave.
 - **El enlace de envío no sirve para leer**: tiene la clave pública, no la privada. Si alguien lo intercepta, como mucho
   puede rellenar la petición antes que E (P lo notaría porque recibe algo que no esperaba, y E vería «ya recibió un secreto»).
 - **El enlace de recogida es la llave**: quien lo tenga puede leer lo enviado. P no debe compartirlo.
-- No hay contraseña: la seguridad la da la clave privada (256 bits), que solo existe en el enlace de recogida.
+- No hay contraseña: la seguridad la da la clave privada X25519 (nivel de seguridad de ~128 bits), que solo existe en
+  el enlace de recogida. En el navegador se importa una vez como no exportable y sus bytes se ponen a cero.
+- Al rellenar, el servidor comprueba **primero la prueba** y solo después el espacio y la cuota: sin el enlace de
+  envío no se aprende si el disco está lleno ni se gasta la cuota de nadie.
 - Cada envío usa una clave efímera nueva.
 
 ## Versionado

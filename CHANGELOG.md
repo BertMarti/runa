@@ -13,7 +13,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Seguridad
 
-- Modelo de amenazas: entradas Q1-Q7 para las peticiones.
+- Modelo de amenazas: entradas Q1-Q10 para las peticiones.
+- Auditoría independiente previa (1 media, 2 bajas, 3 informativas), todo corregido o documentado: al rellenar, la prueba se comprueba antes que el espacio y la cuota; la clave efímera no es exportable y la de recogida se pone a cero tras importarse; «Olvidar y cerrar» tras recoger; las peticiones vacías cuentan en el almacenamiento.
 
 ## [0.3.0] - 2026-10-25
 

@@ -365,6 +365,12 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
       if (!B64URL.test(ciphertext)) return reply.status(400).send({ error: 'invalid_request' });
       const bytes = Buffer.from(ciphertext, 'base64url');
       if (!VALID_SIZES.has(bytes.length)) return reply.status(400).send({ error: 'invalid_request' });
+      // Primero la prueba (barato y sin efectos): sin ella, «no existe», sin revelar si el disco está lleno ni gastar
+      // la cuota de nadie. `fillRequest` la vuelve a comprobar dentro de su transacción.
+      const sendProof = Buffer.from(proof, 'hex');
+      const peek = store.peekFill(req.params.id, sendProof);
+      if (peek === 'not_found') return reply.status(404).send({ error: 'not_found' });
+      if (peek === 'already_filled') return reply.status(409).send({ error: 'already_filled' });
       if (store.usedBytes() + bytes.length > config.maxStorageBytes) {
         req.log.warn('almacenamiento lleno');
         return reply.status(507).send({ error: 'storage_full' });
@@ -377,7 +383,7 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
       const large = bytes.length - GCM_OVERHEAD_BYTES > LARGE_SECRET_BYTES;
       const result = store.fillRequest(
         req.params.id,
-        Buffer.from(proof, 'hex'),
+        sendProof,
         bytes,
         Buffer.from(ephemeral, 'base64url'),
         large ? LARGE_SECRET_MAX_TTL : undefined,

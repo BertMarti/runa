@@ -66,3 +66,24 @@ describe('pedir un secreto', () => {
     expect(parsePickupFragment('v1.' + 'a'.repeat(64) + '.p')).toBeNull();
   });
 });
+
+describe('pedir un secreto: auditoría', () => {
+  it('la recogida rechaza claves efímeras de orden pequeño o basura', async () => {
+    const { send, pickup } = await nueva();
+    const sealed = await sealForRequest(payload, send);
+    const handle = await preparePickup(pickup);
+    await expect(handle.open(sealed.ciphertext, toBase64Url(new Uint8Array(32)))).rejects.toThrow();
+    await expect(handle.open(sealed.ciphertext, 'corta')).rejects.toThrow();
+  });
+
+  it('un PKCS#8 de 48 bytes al azar no se acepta', async () => {
+    const basura = crypto.getRandomValues(new Uint8Array(48));
+    await expect(preparePickup({ pkcs8: basura })).rejects.toThrow();
+  });
+
+  it('tras preparar la recogida, los bytes de la clave privada quedan a cero', async () => {
+    const { pickup } = await nueva();
+    await preparePickup(pickup);
+    expect(pickup.pkcs8.every((b) => b === 0)).toBe(true);
+  });
+});

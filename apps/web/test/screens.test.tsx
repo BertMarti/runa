@@ -290,3 +290,29 @@ describe('pedir un secreto (v0.4)', () => {
     expect(location.hash).toBe('');
   });
 });
+
+describe('pedir un secreto: auditoría (interfaz)', () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('cancelar borra la clave de la barra; olvidar quita el secreto de la pantalla', async () => {
+    const keys = await createRequestKeys();
+    fetchMock.mockImplementation(async () => new Response(null, { status: 204 }));
+    at(`/p/${ID}#${keys.pickupFragment}`);
+    render(<App lang="es" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar la petición' }));
+    expect(await screen.findByText(/Petición cancelada/, {}, { timeout: 5000 })).toBeTruthy();
+    expect(location.hash).toBe('');
+    cleanup();
+
+    const otra = await createRequestKeys();
+    const sealed = await sealForRequest({ text: 'se olvida' }, parseSendFragment(otra.sendFragment)!);
+    fetchMock.mockImplementation(async () => json({ status: 'ready', ciphertext: sealed.ciphertext, ephemeral: sealed.ephemeral }));
+    at(`/p/${ID}#${otra.pickupFragment}`);
+    render(<App lang="es" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Comprobar y abrir' }));
+    expect(await screen.findByText('se olvida', {}, { timeout: 5000 })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Olvidar y cerrar' }));
+    expect(screen.queryByText('se olvida')).toBeNull();
+  });
+});

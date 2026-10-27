@@ -7,8 +7,8 @@
  * Igual que al revelar, ninguna pantalla llama a la API al cargar (los bots de vista previa no gastan nada) y
  * la clave del fragmento se borra de la barra en cuanto deja de hacer falta.
  */
-import { useEffect, useId, useState, type FormEvent } from 'react';
-import { ApiError, cancelRequest, createRequest, fillRequest, getConfig, openRequest, type DeployConfig } from '../api';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { cancelRequest, createRequest, fillRequest, getConfig, openRequest, type DeployConfig } from '../api';
 import { FileDrop } from '../components/FileDrop';
 import { Icon } from '../components/Icon';
 import { RuneScramble } from '../components/RuneScramble';
@@ -21,10 +21,11 @@ import {
   parseSendFragment,
   preparePickup,
   sealForRequest,
+  type PickupHandle,
   type SecretPayload,
   type Ttl,
 } from '../crypto';
-import { fmt, useI18n, type Messages } from '../i18n';
+import { fmt, useI18n } from '../i18n';
 import { errorMessage } from '../lib/errors';
 import { formatNumber, TTLS, ttlLabel } from '../lib/format';
 import { LinkBlock } from './ResultView';
@@ -33,11 +34,6 @@ import { SecretContent } from './RevealScreen';
 /** Quita la clave de la barra de direcciones (y de esta entrada del historial). */
 function stripKey(): void {
   history.replaceState(history.state, '', location.pathname);
-}
-
-function requestError(err: unknown, t: Messages): string {
-  if (err instanceof ApiError && err.code === 'not_found') return t.request.notFound;
-  return errorMessage(err, t);
 }
 
 /* ---------- Crear la petición ---------- */
@@ -175,7 +171,7 @@ export function SendScreen({ id }: { id: string }) {
       setFile(null);
       setSent(true);
     } catch (err) {
-      setError(requestError(err, t));
+      setError(errorMessage(err, t));
     } finally {
       setBusy(false);
     }
@@ -244,7 +240,8 @@ type PickupState =
   | { s: 'busy' }
   | { s: 'waiting'; expiresAt: Date }
   | { s: 'opened'; payload: SecretPayload }
-  | { s: 'cancelled' };
+  | { s: 'cancelled' }
+  | { s: 'forgotten' };
 
 export function PickupScreen({ id }: { id: string }) {
   const { t, formatDate } = useI18n();
@@ -252,6 +249,9 @@ export function PickupScreen({ id }: { id: string }) {
   const [state, setState] = useState<PickupState>({ s: 'idle' });
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // La clave privada se importa una sola vez; después solo vive dentro de Web Crypto (los bytes se ponen a cero).
+  const handleRef = useRef<PickupHandle | null>(null);
+  const getHandle = async () => (handleRef.current ??= await preparePickup(key!));
 
   useEffect(() => {
     document.title = `${t.request.pickupTitle} · RUNA`;
@@ -262,7 +262,7 @@ export function PickupScreen({ id }: { id: string }) {
     setError(null);
     setState({ s: 'busy' });
     try {
-      const handle = await preparePickup(key);
+      const handle = await getHandle();
       const res = await openRequest(id, handle.proof);
       if (res.status === 'waiting') {
         setState({ s: 'waiting', expiresAt: res.expiresAt });
@@ -270,9 +270,10 @@ export function PickupScreen({ id }: { id: string }) {
       }
       const payload = await handle.open(res.ciphertext, res.ephemeral);
       stripKey();
+      handleRef.current = null;
       setState({ s: 'opened', payload });
     } catch (err) {
-      setError(requestError(err, t));
+      setError(errorMessage(err, t));
       setState({ s: 'idle' });
     }
   };
@@ -282,11 +283,12 @@ export function PickupScreen({ id }: { id: string }) {
     setCancelling(true);
     setError(null);
     try {
-      await cancelRequest(id, (await preparePickup(key)).proof);
+      await cancelRequest(id, (await getHandle()).proof);
       stripKey();
+      handleRef.current = null;
       setState({ s: 'cancelled' });
     } catch (err) {
-      setError(requestError(err, t));
+      setError(errorMessage(err, t));
     } finally {
       setCancelling(false);
     }
@@ -299,8 +301,10 @@ export function PickupScreen({ id }: { id: string }) {
     <>
       <section className="hero hero--reveal">
         <RuneSeal state={seal} />
-        <h1 className="hero__title">{state.s === 'opened' ? t.request.received : t.request.pickupTitle}</h1>
-        {state.s === 'opened' || state.s === 'cancelled' ? null : <p className="hero__lead">{t.request.pickupLead}</p>}
+        <h1 className="hero__title">
+          {state.s === 'opened' ? t.request.received : state.s === 'forgotten' ? t.reveal.forgotten : t.request.pickupTitle}
+        </h1>
+        {state.s === 'idle' || state.s === 'busy' || state.s === 'waiting' ? <p className="hero__lead">{t.request.pickupLead}</p> : null}
       </section>
 
       {!key ? (
@@ -310,7 +314,17 @@ export function PickupScreen({ id }: { id: string }) {
       ) : state.s === 'opened' ? (
         <div className="opened">
           <SecretContent payload={state.payload} />
+          <div className="result__actions">
+            <button type="button" className="btn btn--ghost btn--big" onClick={() => setState({ s: 'forgotten' })}>
+              <Icon name="close" />
+              <span>{t.reveal.forget}</span>
+            </button>
+          </div>
         </div>
+      ) : state.s === 'forgotten' ? (
+        <p className="alert alert--note" role="status">
+          <span>{t.reveal.forgottenLead}</span>
+        </p>
       ) : state.s === 'cancelled' ? (
         <p className="alert alert--note" role="status">
           <Icon name="flame" />

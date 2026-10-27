@@ -21,6 +21,9 @@ export type OpenResult =
 
 export type BurnResult = 'ok' | 'denied' | 'not_found';
 
+/** Lo que cuenta cada petición viva en el espacio usado (verificadores y metadatos), aunque esté vacía. */
+export const REQUEST_ROW_BYTES = 256;
+
 /** Petición de secreto: quien pide guarda los verificadores; quien envía la rellena una sola vez. */
 export interface NewRequest {
   /** SHA-256 de la prueba del enlace de envío. */
@@ -199,6 +202,18 @@ export class SecretStore {
     });
   }
 
+  /**
+   * Comprobación previa, sin efectos: ¿esta prueba rellenaría la petición? Se usa antes de mirar el espacio y la
+   * cuota, para que sin la prueba correcta todo sea «no existe» (ni 507 ni cuota gastada).
+   */
+  peekFill(id: string, sendProof: Buffer): 'ok' | 'already_filled' | 'not_found' {
+    const row = this.db
+      .prepare('SELECT send_verifier, ciphertext, expires_at FROM requests WHERE id = ?')
+      .get(id) as Pick<RequestRow, 'send_verifier' | 'ciphertext' | 'expires_at'> | undefined;
+    if (!row || row.expires_at <= this.now() || !tokenMatches(sendProof, row.send_verifier)) return 'not_found';
+    return row.ciphertext ? 'already_filled' : 'ok';
+  }
+
   /** Recoge el secreto pedido (una sola vez: después se borra). Sin la prueba de recogida, «no existe». */
   pickupRequest(id: string, openProof: Buffer): PickupResult {
     return this.transaction((): PickupResult => {
@@ -234,12 +249,12 @@ export class SecretStore {
     return removed;
   }
 
-  /** Bytes cifrados que ocupan ahora mismo los secretos vivos y las peticiones ya rellenadas. */
+  /** Bytes que ocupan ahora mismo los secretos vivos y las peticiones (su cifrado más `REQUEST_ROW_BYTES` cada una). */
   usedBytes(): number {
     const row = this.db
       .prepare(
         `SELECT (SELECT COALESCE(SUM(length(ciphertext)), 0) FROM secrets)
-              + (SELECT COALESCE(SUM(length(ciphertext)), 0) FROM requests) AS bytes`,
+              + (SELECT COALESCE(SUM(length(ciphertext)), 0) + COUNT(*) * ${REQUEST_ROW_BYTES} FROM requests) AS bytes`,
       )
       .get() as { bytes: number };
     return row.bytes;

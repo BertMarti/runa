@@ -569,3 +569,44 @@ describe('pedir un secreto', () => {
     }
   });
 });
+
+describe('pedir un secreto: auditoría (P1)', () => {
+  const nueva = () => {
+    const send = randomBytes(32);
+    const open = randomBytes(32);
+    return { send, open, body: { sendVerifier: sha(send), openVerifier: sha(open), ttl: 3600 } };
+  };
+  const rellenar = (a: FastifyInstance, id: string, proof: Buffer) =>
+    a.inject({
+      method: 'POST',
+      url: `/api/requests/${id}/fill`,
+      payload: { proof: proof.toString('hex'), ciphertext: randomBytes(1052).toString('base64url'), ephemeral: randomBytes(32).toString('base64url') },
+    });
+
+  it('sin la prueba correcta, rellenar nunca revela que el disco está lleno', async () => {
+    const lleno = await buildApp(config({ maxStorageBytes: 1 }), store);
+    const r = nueva();
+    const { id } = (await lleno.inject({ method: 'POST', url: '/api/requests', payload: r.body })).json() as { id: string };
+    expect((await rellenar(lleno, id, randomBytes(32))).statusCode).toBe(404);
+    expect((await rellenar(lleno, 'A'.repeat(22), randomBytes(32))).statusCode).toBe(404);
+    expect((await rellenar(lleno, id, r.send)).statusCode).toBe(507);
+    await lleno.close();
+  });
+
+  it('sin la prueba correcta, rellenar no gasta la cuota de nadie', async () => {
+    const justo = await buildApp(config({ createQuotaBytes: 1052 }), store);
+    const r = nueva();
+    const { id } = (await justo.inject({ method: 'POST', url: '/api/requests', payload: r.body })).json() as { id: string };
+    for (let i = 0; i < 3; i++) expect((await rellenar(justo, id, randomBytes(32))).statusCode).toBe(404);
+    expect((await rellenar(justo, id, r.send)).statusCode).toBe(201);
+    await justo.close();
+  });
+
+  it('después de recoger o cancelar, rellenar da 404 (no 409)', async () => {
+    const r = nueva();
+    const { id } = (await app.inject({ method: 'POST', url: '/api/requests', payload: r.body })).json() as { id: string };
+    await rellenar(app, id, r.send);
+    await app.inject({ method: 'POST', url: `/api/requests/${id}/open`, payload: { proof: r.open.toString('hex') } });
+    expect((await rellenar(app, id, r.send)).statusCode).toBe(404);
+  });
+});

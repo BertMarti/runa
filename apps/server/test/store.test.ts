@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAX_FAILED_ATTEMPTS } from '../src/limits.js';
-import { SecretStore } from '../src/store.js';
+import { REQUEST_ROW_BYTES, SecretStore } from '../src/store.js';
 
 const sha = (b: Buffer) => createHash('sha256').update(b).digest();
 const token = randomBytes(32);
@@ -120,11 +120,26 @@ describe('peticiones en el almacén', () => {
     const s = fresh();
     const send = Buffer.alloc(32, 1);
     const { id } = s.createRequest({ sendVerifier: sha(send), openVerifier: sha(Buffer.alloc(32, 2)), ttlSeconds: 60 });
-    expect(s.usedBytes()).toBe(0);
+    // Una petición vacía también cuenta (verificadores y metadatos): crear muchas no sale gratis.
+    expect(s.usedBytes()).toBe(REQUEST_ROW_BYTES);
     expect(s.fillRequest(id, send, ciphertext, Buffer.alloc(32))).toMatchObject({ status: 'ok' });
-    expect(s.usedBytes()).toBe(ciphertext.length);
+    expect(s.usedBytes()).toBe(ciphertext.length + REQUEST_ROW_BYTES);
     clock += 61_000;
     expect(s.purgeExpired()).toBe(1);
     expect(s.usedBytes()).toBe(0);
+  });
+});
+
+describe('peticiones caducadas', () => {
+  it('no existen para rellenar, recoger ni cancelar', () => {
+    const s = fresh();
+    const send = Buffer.alloc(32, 3);
+    const open = Buffer.alloc(32, 4);
+    const { id } = s.createRequest({ sendVerifier: sha(send), openVerifier: sha(open), ttlSeconds: 60 });
+    clock += 61_000;
+    expect(s.peekFill(id, send)).toBe('not_found');
+    expect(s.fillRequest(id, send, ciphertext, Buffer.alloc(32))).toEqual({ status: 'not_found' });
+    expect(s.pickupRequest(id, open)).toEqual({ status: 'not_found' });
+    expect(s.cancelRequest(id, open)).toBe('not_found');
   });
 });

@@ -108,7 +108,8 @@ export interface SealedForRequest {
 /** Cifra el secreto para quien lo pidió. Solo su clave privada puede abrirlo. */
 export async function sealForRequest(payload: SecretPayload, key: SendKey): Promise<SealedForRequest> {
   const recipient = await subtle().importKey('raw', key.pub, X25519, false, []);
-  const eph = (await subtle().generateKey(X25519, true, ['deriveBits'])) as CryptoKeyPair;
+  // La privada efímera no se puede exportar (la pública siempre se puede leer).
+  const eph = (await subtle().generateKey(X25519, false, ['deriveBits'])) as CryptoKeyPair;
   const ephPub = new Uint8Array(await subtle().exportKey('raw', eph.publicKey));
   // Web Crypto rechaza las claves públicas de orden pequeño (secreto compartido todo ceros).
   const shared = new Uint8Array(await subtle().deriveBits({ name: 'X25519', public: recipient }, eph.privateKey, 256));
@@ -128,7 +129,10 @@ export interface PickupHandle {
   open(ciphertext: string, ephemeral: string): Promise<SecretPayload>;
 }
 
-/** Prepara la recogida: importa la clave privada (no exportable) y deriva la prueba. */
+/**
+ * Prepara la recogida: importa la clave privada (no exportable) y deriva la prueba. Después borra (pone a cero)
+ * los bytes PKCS#8 de `key`: a partir de aquí la clave solo vive dentro de Web Crypto.
+ */
 export async function preparePickup(key: PickupKey): Promise<PickupHandle> {
   // Importada una vez como exportable solo para leer la clave pública (`x` del JWK), que forma parte de la sal.
   const withPub = await subtle().importKey('pkcs8', key.pkcs8, X25519, true, ['deriveBits']);
@@ -136,8 +140,10 @@ export async function preparePickup(key: PickupKey): Promise<PickupHandle> {
   const pub = fromBase64Url(jwk.x ?? '');
   if (pub.length !== PUBLIC_BYTES) throw new Error('Clave no válida');
   const priv = await subtle().importKey('pkcs8', key.pkcs8, X25519, false, ['deriveBits']);
+  const proof = toHex(await openProofOf(key.pkcs8));
+  key.pkcs8.fill(0);
   return {
-    proof: toHex(await openProofOf(key.pkcs8)),
+    proof,
     async open(ciphertext, ephemeral) {
       const eph = fromBase64Url(ephemeral);
       const bytes = fromBase64Url(ciphertext);
