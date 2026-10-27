@@ -16,6 +16,7 @@ export type ApiErrorCode =
   | 'create_forbidden'
   | 'quota_exceeded'
   | 'ttl_too_long'
+  | 'already_filled'
   | 'denied'
   | 'not_found'
   | 'network'
@@ -81,6 +82,8 @@ async function toApiError(res: Response): Promise<ApiError> {
       return new ApiError('denied', 403, { attemptsLeft: nonNegativeInt(body.attemptsLeft) });
     case 404:
       return new ApiError('not_found', 404);
+    case 409:
+      return new ApiError('already_filled', 409);
     case 413:
       return new ApiError('too_large', 413);
     case 429: {
@@ -183,4 +186,60 @@ export async function openRemote(id: string, proof: AccessProof, signal?: AbortS
 
 export async function burnRemote(id: string, proof: AccessProof, signal?: AbortSignal): Promise<void> {
   await post(secretPath(id, 'burn'), { link: proof.link, token: proof.token }, signal);
+}
+
+/* ---------- Pedir un secreto ---------- */
+
+function requestPath(id: string, action: 'fill' | 'open' | 'cancel'): string {
+  if (!ID_PATTERN.test(id)) throw new ApiError('not_found', 404);
+  return `/api/requests/${id}/${action}`;
+}
+
+const EPHEMERAL = /^[A-Za-z0-9_-]{43}$/;
+
+function expiry(value: unknown, status: number): Date {
+  const date = typeof value === 'string' ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) throw new ApiError('server', status);
+  return date;
+}
+
+export async function createRequest(
+  req: { sendVerifier: string; openVerifier: string; ttl: number },
+  signal?: AbortSignal,
+): Promise<CreatedSecret> {
+  const res = await post('/api/requests', req, signal);
+  const body = await readJson(res);
+  if (typeof body.id !== 'string' || !ID_PATTERN.test(body.id)) throw new ApiError('server', res.status);
+  return { id: body.id, expiresAt: expiry(body.expiresAt, res.status) };
+}
+
+export async function fillRequest(
+  id: string,
+  sealed: { proof: string; ciphertext: string; ephemeral: string },
+  signal?: AbortSignal,
+): Promise<{ expiresAt: Date }> {
+  const res = await post(requestPath(id, 'fill'), sealed, signal);
+  return { expiresAt: expiry((await readJson(res)).expiresAt, res.status) };
+}
+
+export type PickupResponse = { status: 'waiting'; expiresAt: Date } | { status: 'ready'; ciphertext: string; ephemeral: string };
+
+export async function openRequest(id: string, proof: string, signal?: AbortSignal): Promise<PickupResponse> {
+  const res = await post(requestPath(id, 'open'), { proof }, signal);
+  const body = await readJson(res);
+  if (body.status === 'waiting') return { status: 'waiting', expiresAt: expiry(body.expiresAt, res.status) };
+  if (
+    body.status === 'ready' &&
+    typeof body.ciphertext === 'string' &&
+    B64URL.test(body.ciphertext) &&
+    typeof body.ephemeral === 'string' &&
+    EPHEMERAL.test(body.ephemeral)
+  ) {
+    return { status: 'ready', ciphertext: body.ciphertext, ephemeral: body.ephemeral };
+  }
+  throw new ApiError('server', res.status);
+}
+
+export async function cancelRequest(id: string, proof: string, signal?: AbortSignal): Promise<void> {
+  await post(requestPath(id, 'cancel'), { proof }, signal);
 }

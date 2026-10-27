@@ -44,6 +44,15 @@
   </tr>
 </table>
 
+### ¿Y si eres tú quien necesita recibir un secreto?
+
+Con **«Pedir un secreto»** (nuevo en la versión 0.4) le das la vuelta: RUNA te crea **dos enlaces**.
+
+1. **El enlace de envío** se lo mandas a quien te tiene que pasar la contraseña o el archivo (un cliente, un compañero, tu familia). Lo abre, escribe el secreto y pulsa «Cifrar y enviar».
+2. **Tu enlace de recogida** te lo guardas tú. Con él abres lo que te han mandado, una sola vez.
+
+Lo que te envían se cifra en su navegador **para ti**: ni RUNA ni quien vea el enlace de envío pueden leerlo. Así ya no hace falta pedir a nadie que te mande una contraseña por correo.
+
 ---
 
 ## ✦ ¿Para qué sirve?

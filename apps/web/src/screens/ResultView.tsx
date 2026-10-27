@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { ApiError, burnRemote } from '../api';
 import { CopyButton } from '../components/CopyButton';
 import { Icon } from '../components/Icon';
@@ -77,9 +77,10 @@ export function ResultView({ result, burned, onBurned, onReset }: ResultViewProp
   );
 }
 
-function LinkBlock({ link }: { link: string }) {
+export function LinkBlock({ link, label, qrLabel }: { link: string; label?: string; qrLabel?: string }) {
   const { t } = useI18n();
   const linkRef = useRef<HTMLParagraphElement>(null);
+  const labelId = useId();
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const share = async () => {
@@ -93,10 +94,10 @@ function LinkBlock({ link }: { link: string }) {
   return (
     <div className="linkblock">
       <div className="linkblock__text">
-        <span className="field__label" id="result-link-label">
-          {t.result.linkLabel}
+        <span className="field__label" id={labelId}>
+          {label ?? t.result.linkLabel}
         </span>
-        <p ref={linkRef} className="linkbox mono" aria-labelledby="result-link-label">
+        <p ref={linkRef} className="linkbox mono" aria-labelledby={labelId}>
           {link}
         </p>
         <div className="linkblock__buttons">
@@ -119,7 +120,7 @@ function LinkBlock({ link }: { link: string }) {
       </div>
       <figure className="linkblock__qr">
         <QrCode value={link} alt={t.result.qrAlt} />
-        <figcaption className="field__hint">{t.result.qrLabel}</figcaption>
+        <figcaption className="field__hint">{qrLabel ?? t.result.qrLabel}</figcaption>
       </figure>
     </div>
   );
