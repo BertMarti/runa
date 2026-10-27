@@ -12,6 +12,7 @@ const ICONS = {
   dice: 'M4 4h16v16H4zM8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01',
   plus: 'M12 5v14M5 12h14',
   lock: 'M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  key: 'M8 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zM11.5 12H21M17.5 12v3.5M20 12v2.5',
 } as const;
 
 export type IconName = keyof typeof ICONS;

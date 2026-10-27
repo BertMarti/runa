@@ -5,6 +5,7 @@ import { Icon } from './components/Icon';
 import { I18nProvider, useI18n, type Lang } from './i18n';
 import { useRoute } from './router';
 import { CreateScreen } from './screens/CreateScreen';
+import { PickupScreen, SendScreen } from './screens/RequestScreens';
 import { RevealScreen } from './screens/RevealScreen';
 
 /** Fuera de HTTPS (o localhost) el navegador no da acceso a Web Crypto: sin esto, el fallo parecería del navegador. */
@@ -23,8 +24,17 @@ function InsecureNotice() {
 
 function Screen() {
   const route = useRoute();
-  // `key`: cada enlace abre un estado limpio, sin restos del secreto anterior.
-  return route.name === 'reveal' ? <RevealScreen key={`${route.id}:${route.visit}`} id={route.id} /> : <CreateScreen />;
+  // `key`: cada enlace abre un estado limpio, sin restos del anterior.
+  switch (route.name) {
+    case 'reveal':
+      return <RevealScreen key={`${route.id}:${route.visit}`} id={route.id} />;
+    case 'send':
+      return <SendScreen key={`${route.id}:${route.visit}`} id={route.id} />;
+    case 'pickup':
+      return <PickupScreen key={`${route.id}:${route.visit}`} id={route.id} />;
+    default:
+      return <CreateScreen />;
+  }
 }
 
 export function App({ lang }: { lang?: Lang }) {

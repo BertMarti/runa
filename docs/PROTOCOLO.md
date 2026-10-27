@@ -93,7 +93,68 @@ El id es lo que ven los intermediarios: registros de un proxy o una CDN, bots de
 
 ## Lo que el servidor **nunca** ve
 
-`K`, la contraseña, `P`, `kEnc` y el contenido. `token` y `link` solo llegan al abrir o destruir, y no permiten derivar nada de lo anterior.
+`K`, la contraseña, `P`, `kEnc` y el contenido. `token` y `link` solo llegan al abrir o destruir, y no permiten derivar nada de lo anterior. En las peticiones, tampoco `a`, `A`, `e` ni `z` (ver arriba).
+
+## Pedir un secreto
+
+Flujo inverso: quien **pide** (P) genera un enlace para que otra persona (E) le **envíe** un secreto que solo P
+puede abrir. Útil para pedir credenciales a un cliente sin que viajen en claro por el correo o el chat.
+
+### Primitivas añadidas
+
+| Uso | Primitiva |
+|---|---|
+| Acuerdo de claves | X25519 (Web Crypto), clave efímera por envío |
+| Derivación | HKDF-SHA-256 con sal `E ‖ A` |
+| Cifrado | AES-256-GCM, AAD `runa/v1|req` |
+
+### Claves y enlaces
+
+```text
+(a, A)     ← par X25519 generado en el navegador de P
+sendProof  = HKDF(A,           info="runa/v1/req-send")   → el servidor guarda SHA-256(sendProof)
+openProof  = HKDF(PKCS#8 de a, info="runa/v1/req-open")   → el servidor guarda SHA-256(openProof)
+
+envío      https://runa.example/r/<id>#v1.<A en base64url>          (43 caracteres, para E)
+recogida   https://runa.example/p/<id>#v1.<a en PKCS#8 base64url>   (64 caracteres, solo para P)
+```
+
+### Envío (E)
+
+```text
+(e, E)  ← par X25519 efímero
+z       = X25519(e, A)                       (Web Crypto rechaza claves de orden pequeño: z ≠ 0)
+kEnc    = HKDF(z, salt = E ‖ A, info="runa/v1/req-enc") → AES-256-GCM
+cifrado = iv ‖ AES-GCM(kEnc, iv, envoltorio, aad="runa/v1|req")      (mismo envoltorio con relleno)
+→ POST /api/requests/:id/fill { proof: sendProof, ciphertext, ephemeral: E }
+```
+
+### Recogida (P)
+
+P importa `a` (la clave pública `A` sale del JWK de la privada), deriva `openProof` y pide el cifrado; con
+`z = X25519(a, E)` obtiene la misma `kEnc`.
+
+### Servidor
+
+| Paso | Petición | Comportamiento |
+|---|---|---|
+| Crear | `POST /api/requests { sendVerifier, openVerifier, ttl }` | Mismas reglas que crear un secreto (`CREATE_FROM` incluido). |
+| Rellenar | `POST /api/requests/:id/fill` | Sin `sendProof` correcta: **404** (nada que aprender). **Una sola vez** (409 después). Mismos tamaños de bloque, cuota y tope de almacenamiento. Contenido de más de 1 MiB: caduca como mucho en 1 día. Se permite desde fuera de `CREATE_FROM`: es para quien no está en casa, y solo rellena una petición que ya creó alguien autorizado. |
+| Recoger | `POST /api/requests/:id/open { proof }` | Sin `openProof` correcta: 404. Si aún no hay nada: `waiting`. Si lo hay: lo entrega y **lo borra**. |
+| Cancelar | `POST /api/requests/:id/cancel { proof }` | Borra la petición (y lo enviado). |
+
+### Propiedades
+
+- El servidor nunca ve `a`, `A`, `e`, `z` ni el contenido. Sí recibe `E` (pública y efímera), `sendProof` al rellenar
+  y `openProof` al recoger: son salidas de HKDF y no permiten obtener ninguna clave.
+- **El enlace de envío no sirve para leer**: tiene la clave pública, no la privada. Si alguien lo intercepta, como mucho
+  puede rellenar la petición antes que E (P lo notaría porque recibe algo que no esperaba, y E vería «ya recibió un secreto»).
+- **El enlace de recogida es la llave**: quien lo tenga puede leer lo enviado. P no debe compartirlo.
+- No hay contraseña: la seguridad la da la clave privada X25519 (nivel de seguridad de ~128 bits), que solo existe en
+  el enlace de recogida. En el navegador se importa una vez como no exportable y sus bytes se ponen a cero.
+- Al rellenar, el servidor comprueba **primero la prueba** y solo después el espacio y la cuota: sin el enlace de
+  envío no se aprende si el disco está lleno ni se gasta la cuota de nadie.
+- Cada envío usa una clave efímera nueva.
 
 ## Versionado
 

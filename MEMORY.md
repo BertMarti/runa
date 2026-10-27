@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-10-25 por lead (v0.3.0)
+Última actualización: 2026-10-27 por lead (v0.4.0)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -79,6 +79,12 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - Comprobado: con `-p 127.0.0.1:8484:8080`, el contenedor ve la conexión desde `::ffff:172.17.0.1` (pasarela de Docker), no desde `127.0.0.1`.
 - **Publicada** (2026-10-26): PR #3 fusionada, release v0.3.0 e imagen `ghcr.io/bertmarti/runa:0.3.0` (amd64 y arm64) comprobada en la Raspberry. Para ARIA quedó abierta la PR BertMarti/ARIA#5 (imagen 0.3.0, `TRUST_CF_FROM` y `header_up -Cf-Connecting-IP` en `runa-tls`), pendiente de que la sesión de ARIA la integre. El `docker-compose.override.yml` real de ARIA hay que cambiarlo a mano al desplegar.
 
+## v0.4.0 «Mensajero» (2026-10-27)
+
+- **Pedir un secreto** (X25519 + HKDF + AES-GCM, ver PROTOCOLO): tabla `requests` en el mismo SQLite (borrado seguro, purga, cuenta en `usedBytes`). Rellenar se permite fuera de `CREATE_FROM` (es para quien no está en casa); crear la petición, no. Pruebas: servidor (ciclo, 404 sin prueba, 409, caducidad recortada, túnel), web (cripto y pantallas) y e2e.
+- **Playwright** 1.64.1 (`npm run e2e`): en local, con la imagen `mcr.microsoft.com/playwright:v1.64.1-noble` (trae Node 24 y Chromium arm64): `docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp -v $PWD:/app -w /app --ipc=host mcr.microsoft.com/playwright:v1.64.1-noble npx playwright test` (antes `npm run build`).
+- El tema claro se pospuso a v0.4.x: hay ~90 colores fijos en el CSS que antes hay que pasar a variables.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.
@@ -86,6 +92,7 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - `@fastify/static` v10: en `setHeaders` el objeto es una respuesta de Fastify (`res.header`, no `res.setHeader`).
 - `trustProxy` de Fastify no acepta números en sus tipos: solo `true` o una lista de IP/CIDR.
 - `pkill -f patrón` dentro de un comando que contiene el patrón se mata a sí mismo.
+- Playwright: volver a abrir la misma URL cambiando solo el `#` es una navegación dentro del documento y el enrutador no reinicia la pantalla (el `#` ya se borró). En las pruebas, pasar antes por `about:blank`. `getByLabel('Secreto')` necesita `exact: true`. Con `reducedMotion: 'reduce'` las etiquetas animadas quedan «estables».
 
 ## Pendiente inmediato
 

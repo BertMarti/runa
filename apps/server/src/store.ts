@@ -21,6 +21,33 @@ export type OpenResult =
 
 export type BurnResult = 'ok' | 'denied' | 'not_found';
 
+/** Lo que cuenta cada petición viva en el espacio usado (verificadores y metadatos), aunque esté vacía. */
+export const REQUEST_ROW_BYTES = 256;
+
+/** Petición de secreto: quien pide guarda los verificadores; quien envía la rellena una sola vez. */
+export interface NewRequest {
+  /** SHA-256 de la prueba del enlace de envío. */
+  sendVerifier: Buffer;
+  /** SHA-256 de la prueba del enlace de recogida. */
+  openVerifier: Buffer;
+  ttlSeconds: number;
+}
+
+export type FillResult = { status: 'ok'; expiresAt: number } | { status: 'already_filled' } | { status: 'not_found' };
+
+export type PickupResult =
+  | { status: 'waiting'; expiresAt: number }
+  | { status: 'ok'; ciphertext: Buffer; ephemeral: Buffer }
+  | { status: 'not_found' };
+
+interface RequestRow {
+  send_verifier: Uint8Array;
+  open_verifier: Uint8Array;
+  ciphertext: Uint8Array | null;
+  ephemeral: Uint8Array | null;
+  expires_at: number;
+}
+
 /** Lo que presenta quien abre: prueba de enlace y token (32 bytes cada uno). */
 export interface Proof {
   link: Buffer;
@@ -78,6 +105,18 @@ export class SecretStore {
         failed_attempts INTEGER NOT NULL DEFAULT 0
       ) STRICT;
       CREATE INDEX IF NOT EXISTS secrets_expires_at ON secrets (expires_at);
+
+      CREATE TABLE IF NOT EXISTS requests (
+        id             TEXT    PRIMARY KEY,
+        send_verifier  BLOB    NOT NULL,
+        open_verifier  BLOB    NOT NULL,
+        ciphertext     BLOB,
+        ephemeral      BLOB,
+        created_at     INTEGER NOT NULL,
+        expires_at     INTEGER NOT NULL,
+        filled_at      INTEGER
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS requests_expires_at ON requests (expires_at);
     `);
   }
 
@@ -132,21 +171,91 @@ export class SecretStore {
     });
   }
 
-  /**
-   * Borra los secretos caducados y vuelca el WAL al fichero principal, para
-   * que las copias antiguas de las páginas no sobrevivan en `-wal`.
-   * Devuelve cuántos secretos se eliminaron.
-   */
-  purgeExpired(): number {
-    const removed = this.db.prepare('DELETE FROM secrets WHERE expires_at <= ?').run(this.now()).changes;
-    this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
-    return Number(removed);
+  /* ---------- Peticiones de secreto ---------- */
+
+  createRequest(req: NewRequest): { id: string; expiresAt: number } {
+    const id = newId();
+    const createdAt = this.now();
+    const expiresAt = createdAt + req.ttlSeconds * 1000;
+    this.db
+      .prepare('INSERT INTO requests (id, send_verifier, open_verifier, created_at, expires_at) VALUES (?, ?, ?, ?, ?)')
+      .run(id, req.sendVerifier, req.openVerifier, createdAt, expiresAt);
+    return { id, expiresAt };
   }
 
-  /** Bytes cifrados que ocupan ahora mismo los secretos vivos. */
+  /**
+   * Rellena una petición con el cifrado. Solo con la prueba del enlace de envío y solo una vez. Sin la prueba
+   * correcta, la petición «no existe» (como en `open`): quien solo conoce el id no aprende nada.
+   * `maxTtlSeconds` acorta la caducidad si el contenido es grande.
+   */
+  fillRequest(id: string, sendProof: Buffer, ciphertext: Buffer, ephemeral: Buffer, maxTtlSeconds?: number): FillResult {
+    return this.transaction((): FillResult => {
+      const row = this.liveRequest(id);
+      if (!row || !tokenMatches(sendProof, row.send_verifier)) return { status: 'not_found' };
+      if (row.ciphertext) return { status: 'already_filled' };
+      const now = this.now();
+      const expiresAt = maxTtlSeconds === undefined ? row.expires_at : Math.min(row.expires_at, now + maxTtlSeconds * 1000);
+      this.db
+        .prepare('UPDATE requests SET ciphertext = ?, ephemeral = ?, filled_at = ?, expires_at = ? WHERE id = ?')
+        .run(ciphertext, ephemeral, now, expiresAt, id);
+      return { status: 'ok', expiresAt };
+    });
+  }
+
+  /**
+   * Comprobación previa, sin efectos: ¿esta prueba rellenaría la petición? Se usa antes de mirar el espacio y la
+   * cuota, para que sin la prueba correcta todo sea «no existe» (ni 507 ni cuota gastada).
+   */
+  peekFill(id: string, sendProof: Buffer): 'ok' | 'already_filled' | 'not_found' {
+    const row = this.db
+      .prepare('SELECT send_verifier, ciphertext, expires_at FROM requests WHERE id = ?')
+      .get(id) as Pick<RequestRow, 'send_verifier' | 'ciphertext' | 'expires_at'> | undefined;
+    if (!row || row.expires_at <= this.now() || !tokenMatches(sendProof, row.send_verifier)) return 'not_found';
+    return row.ciphertext ? 'already_filled' : 'ok';
+  }
+
+  /** Recoge el secreto pedido (una sola vez: después se borra). Sin la prueba de recogida, «no existe». */
+  pickupRequest(id: string, openProof: Buffer): PickupResult {
+    return this.transaction((): PickupResult => {
+      const row = this.liveRequest(id);
+      if (!row || !tokenMatches(openProof, row.open_verifier)) return { status: 'not_found' };
+      if (!row.ciphertext || !row.ephemeral) return { status: 'waiting', expiresAt: row.expires_at };
+      this.deleteRequest(id);
+      return { status: 'ok', ciphertext: Buffer.from(row.ciphertext), ephemeral: Buffer.from(row.ephemeral) };
+    });
+  }
+
+  /** Cancela la petición (y borra lo que se hubiera enviado). */
+  cancelRequest(id: string, openProof: Buffer): 'ok' | 'not_found' {
+    return this.transaction(() => {
+      const row = this.liveRequest(id);
+      if (!row || !tokenMatches(openProof, row.open_verifier)) return 'not_found';
+      this.deleteRequest(id);
+      return 'ok';
+    });
+  }
+
+  /**
+   * Borra los secretos y peticiones caducados y vuelca el WAL al fichero principal, para
+   * que las copias antiguas de las páginas no sobrevivan en `-wal`.
+   * Devuelve cuántos registros se eliminaron.
+   */
+  purgeExpired(): number {
+    const now = this.now();
+    const removed =
+      Number(this.db.prepare('DELETE FROM secrets WHERE expires_at <= ?').run(now).changes) +
+      Number(this.db.prepare('DELETE FROM requests WHERE expires_at <= ?').run(now).changes);
+    this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    return removed;
+  }
+
+  /** Bytes que ocupan ahora mismo los secretos vivos y las peticiones (su cifrado más `REQUEST_ROW_BYTES` cada una). */
   usedBytes(): number {
     const row = this.db
-      .prepare('SELECT COALESCE(SUM(length(ciphertext)), 0) AS bytes FROM secrets')
+      .prepare(
+        `SELECT (SELECT COALESCE(SUM(length(ciphertext)), 0) FROM secrets)
+              + (SELECT COALESCE(SUM(length(ciphertext)), 0) + COUNT(*) * ${REQUEST_ROW_BYTES} FROM requests) AS bytes`,
+      )
       .get() as { bytes: number };
     return row.bytes;
   }
@@ -200,5 +309,21 @@ export class SecretStore {
 
   private delete(id: string): void {
     this.db.prepare('DELETE FROM secrets WHERE id = ?').run(id);
+  }
+
+  private liveRequest(id: string): RequestRow | undefined {
+    const row = this.db
+      .prepare('SELECT send_verifier, open_verifier, ciphertext, ephemeral, expires_at FROM requests WHERE id = ?')
+      .get(id) as RequestRow | undefined;
+    if (!row) return undefined;
+    if (row.expires_at <= this.now()) {
+      this.deleteRequest(id);
+      return undefined;
+    }
+    return row;
+  }
+
+  private deleteRequest(id: string): void {
+    this.db.prepare('DELETE FROM requests WHERE id = ?').run(id);
   }
 }

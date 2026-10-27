@@ -64,6 +64,38 @@ interface CreateBody {
   views: number;
 }
 
+/** Clave pública efímera X25519 (32 bytes) en base64url. */
+const EPHEMERAL_PATTERN = '^[A-Za-z0-9_-]{43}$';
+
+const createRequestBody = {
+  type: 'object',
+  required: ['sendVerifier', 'openVerifier', 'ttl'],
+  additionalProperties: false,
+  properties: {
+    sendVerifier: { type: 'string', pattern: TOKEN_PATTERN },
+    openVerifier: { type: 'string', pattern: TOKEN_PATTERN },
+    ttl: { type: 'integer', enum: [...TTL_OPTIONS] },
+  },
+} as const;
+
+const fillBody = {
+  type: 'object',
+  required: ['proof', 'ciphertext', 'ephemeral'],
+  additionalProperties: false,
+  properties: {
+    proof: { type: 'string', pattern: TOKEN_PATTERN },
+    ciphertext: { type: 'string', minLength: 16, maxLength: MAX_CIPHERTEXT_B64 },
+    ephemeral: { type: 'string', pattern: EPHEMERAL_PATTERN },
+  },
+} as const;
+
+const requestProofBody = {
+  type: 'object',
+  required: ['proof'],
+  additionalProperties: false,
+  properties: { proof: { type: 'string', pattern: TOKEN_PATTERN } },
+} as const;
+
 /**
  * Política de contenido estricta: solo recursos propios, ningún script en
  * línea, sin marcos, sin formularios hacia fuera y sin `<base>`.
@@ -296,6 +328,94 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
     },
   );
 
+  /* ---------- Pedir un secreto (ver docs/PROTOCOLO.md) ---------- */
+
+  // Crear una petición sigue las mismas reglas que crear un secreto (CREATE_FROM incluido).
+  app.post<{ Body: { sendVerifier: string; openVerifier: string; ttl: number } }>(
+    '/api/requests',
+    {
+      schema: { body: createRequestBody },
+      config: { rateLimit: { max: config.createRateLimit, timeWindow: '1 minute' } },
+      onRequest: async (req, reply) => {
+        if (!canCreate(req)) return reply.status(403).send({ error: 'create_forbidden' });
+      },
+    },
+    async (req, reply) => {
+      const { sendVerifier, openVerifier, ttl } = req.body;
+      const created = store.createRequest({
+        sendVerifier: Buffer.from(sendVerifier, 'hex'),
+        openVerifier: Buffer.from(openVerifier, 'hex'),
+        ttlSeconds: ttl,
+      });
+      return reply.status(201).send({ id: created.id, expiresAt: new Date(created.expiresAt).toISOString() });
+    },
+  );
+
+  // Rellenar se puede desde cualquier sitio (es para quien no está en casa), pero solo con el enlace de envío,
+  // una vez por petición, con los mismos tamaños, cuota y tope de almacenamiento que crear un secreto.
+  app.post<{ Params: { id: string }; Body: { proof: string; ciphertext: string; ephemeral: string } }>(
+    '/api/requests/:id/fill',
+    {
+      bodyLimit: BODY_LIMIT,
+      schema: { params: idParams, body: fillBody },
+      config: { rateLimit: { max: config.createRateLimit, timeWindow: '1 minute' } },
+    },
+    async (req, reply) => {
+      const { proof, ciphertext, ephemeral } = req.body;
+      if (!B64URL.test(ciphertext)) return reply.status(400).send({ error: 'invalid_request' });
+      const bytes = Buffer.from(ciphertext, 'base64url');
+      if (!VALID_SIZES.has(bytes.length)) return reply.status(400).send({ error: 'invalid_request' });
+      // Primero la prueba (barato y sin efectos): sin ella, «no existe», sin revelar si el disco está lleno ni gastar
+      // la cuota de nadie. `fillRequest` la vuelve a comprobar dentro de su transacción.
+      const sendProof = Buffer.from(proof, 'hex');
+      const peek = store.peekFill(req.params.id, sendProof);
+      if (peek === 'not_found') return reply.status(404).send({ error: 'not_found' });
+      if (peek === 'already_filled') return reply.status(409).send({ error: 'already_filled' });
+      if (store.usedBytes() + bytes.length > config.maxStorageBytes) {
+        req.log.warn('almacenamiento lleno');
+        return reply.status(507).send({ error: 'storage_full' });
+      }
+      const wait = quota.take(clientKey(req), bytes.length);
+      if (wait > 0) {
+        reply.header('Retry-After', String(wait));
+        return reply.status(429).send({ statusCode: 429, error: 'quota_exceeded', retryAfterSeconds: wait });
+      }
+      const large = bytes.length - GCM_OVERHEAD_BYTES > LARGE_SECRET_BYTES;
+      const result = store.fillRequest(
+        req.params.id,
+        sendProof,
+        bytes,
+        Buffer.from(ephemeral, 'base64url'),
+        large ? LARGE_SECRET_MAX_TTL : undefined,
+      );
+      if (result.status === 'ok') return reply.status(201).send({ expiresAt: new Date(result.expiresAt).toISOString() });
+      if (result.status === 'already_filled') return reply.status(409).send({ error: 'already_filled' });
+      return reply.status(404).send({ error: 'not_found' });
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: { proof: string } }>(
+    '/api/requests/:id/open',
+    { schema: { params: idParams, body: requestProofBody }, config: openLimit },
+    async (req, reply) => {
+      const result = store.pickupRequest(req.params.id, Buffer.from(req.body.proof, 'hex'));
+      if (result.status === 'waiting') return { status: 'waiting', expiresAt: new Date(result.expiresAt).toISOString() };
+      if (result.status === 'ok') {
+        return { status: 'ready', ciphertext: result.ciphertext.toString('base64url'), ephemeral: result.ephemeral.toString('base64url') };
+      }
+      return reply.status(404).send({ error: 'not_found' });
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: { proof: string } }>(
+    '/api/requests/:id/cancel',
+    { schema: { params: idParams, body: requestProofBody }, config: openLimit },
+    async (req, reply) => {
+      const result = store.cancelRequest(req.params.id, Buffer.from(req.body.proof, 'hex'));
+      return result === 'ok' ? reply.status(204).send() : reply.status(404).send({ error: 'not_found' });
+    },
+  );
+
   if (config.publicDir && fs.existsSync(path.join(config.publicDir, 'index.html'))) {
     await registerWeb(app, config.publicDir);
   } else {
@@ -326,6 +446,8 @@ async function registerWeb(app: FastifyInstance, publicDir: string): Promise<voi
 
   app.get('/', (_req, reply) => sendIndex(reply, false));
   app.get('/s/:id', (_req, reply) => sendIndex(reply, true));
+  app.get('/r/:id', (_req, reply) => sendIndex(reply, true));
+  app.get('/p/:id', (_req, reply) => sendIndex(reply, true));
 
   app.setNotFoundHandler((req, reply) => {
     if (req.method === 'GET' && !API_PATH.test(req.url)) return sendIndex(reply, true);

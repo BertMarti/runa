@@ -13,6 +13,10 @@ export function errorMessage(err: unknown, t: Messages): string {
         return fmt(t.errors.quota_exceeded, { m: Math.max(1, Math.ceil((err.retryAfterSeconds ?? 3600) / 60)) });
       case 'ttl_too_long':
         return t.errors.ttl_too_long;
+      case 'already_filled':
+        return t.request.alreadyFilled;
+      case 'not_found':
+        return t.request.notFound;
       case 'invalid_request':
       case 'too_large':
       case 'storage_full':

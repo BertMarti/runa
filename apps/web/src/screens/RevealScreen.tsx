@@ -279,8 +279,6 @@ interface OpenedProps {
 
 function Opened({ payload, viewsLeft, burnedNow, burning, error, onBurn, onForget }: OpenedProps) {
   const { t, plural } = useI18n();
-  const [hidden, setHidden] = useState(false);
-  const textRef = useRef<HTMLPreElement>(null);
 
   return (
     <div className="opened">
@@ -301,42 +299,7 @@ function Opened({ payload, viewsLeft, burnedNow, burning, error, onBurn, onForge
         )}
       </div>
 
-      <section className="card secret" aria-labelledby="secret-label">
-        <div className="secret__head">
-          <h2 id="secret-label" className="field__label">
-            {t.reveal.contentLabel}
-          </h2>
-          {payload.text ? (
-            <div className="secret__tools">
-              <button type="button" className="btn btn--ghost btn--small" onClick={() => setHidden((h) => !h)} aria-pressed={hidden}>
-                <Icon name={hidden ? 'eye' : 'eyeOff'} />
-                <span>{hidden ? t.reveal.showText : t.reveal.hideText}</span>
-              </button>
-              <CopyButton
-                className="btn--small"
-                text={payload.text}
-                label={t.reveal.copy}
-                copiedLabel={t.reveal.copied}
-                announce={t.reveal.copiedAnnounce}
-                fallbackMessage={t.reveal.copyFallback}
-                target={hidden ? undefined : textRef}
-              />
-            </div>
-          ) : null}
-        </div>
-        {payload.text ? (
-          hidden ? (
-            <p className="secret__text secret__text--hidden">{t.reveal.hiddenText}</p>
-          ) : (
-            <pre ref={textRef} className="secret__text mono">
-              {payload.text}
-            </pre>
-          )
-        ) : (
-          <p className="field__hint">{t.reveal.emptyText}</p>
-        )}
-        {payload.file ? <Download file={payload.file} /> : null}
-      </section>
+      <SecretContent payload={payload} />
 
       <div className="result__actions">
         <button type="button" className="btn btn--ghost btn--big" onClick={onForget}>
@@ -356,6 +319,51 @@ function Opened({ payload, viewsLeft, burnedNow, burning, error, onBurn, onForge
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** Lo que se ha descifrado: texto (ocultable y copiable) y archivo adjunto. También lo usa la recogida de peticiones. */
+export function SecretContent({ payload }: { payload: SecretPayload }) {
+  const { t } = useI18n();
+  const [hidden, setHidden] = useState(false);
+  const textRef = useRef<HTMLPreElement>(null);
+  return (
+    <section className="card secret" aria-labelledby="secret-label">
+      <div className="secret__head">
+        <h2 id="secret-label" className="field__label">
+          {t.reveal.contentLabel}
+        </h2>
+        {payload.text ? (
+          <div className="secret__tools">
+            <button type="button" className="btn btn--ghost btn--small" onClick={() => setHidden((h) => !h)} aria-pressed={hidden}>
+              <Icon name={hidden ? 'eye' : 'eyeOff'} />
+              <span>{hidden ? t.reveal.showText : t.reveal.hideText}</span>
+            </button>
+            <CopyButton
+              className="btn--small"
+              text={payload.text}
+              label={t.reveal.copy}
+              copiedLabel={t.reveal.copied}
+              announce={t.reveal.copiedAnnounce}
+              fallbackMessage={t.reveal.copyFallback}
+              target={hidden ? undefined : textRef}
+            />
+          </div>
+        ) : null}
+      </div>
+      {payload.text ? (
+        hidden ? (
+          <p className="secret__text secret__text--hidden">{t.reveal.hiddenText}</p>
+        ) : (
+          <pre ref={textRef} className="secret__text mono">
+            {payload.text}
+          </pre>
+        )
+      ) : (
+        <p className="field__hint">{t.reveal.emptyText}</p>
+      )}
+      {payload.file ? <Download file={payload.file} /> : null}
+    </section>
   );
 }
 
