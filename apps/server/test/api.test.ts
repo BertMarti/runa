@@ -476,3 +476,96 @@ describe('cuotas (revisión externa R2)', () => {
     expect((await grande(86_400)).statusCode).toBe(201);
   });
 });
+
+describe('pedir un secreto', () => {
+  const nueva = () => {
+    const send = randomBytes(32);
+    const open = randomBytes(32);
+    return { send, open, body: { sendVerifier: sha(send), openVerifier: sha(open), ttl: 86_400 } };
+  };
+  const crear = (a: FastifyInstance, payload: object, remoteAddress = '127.0.0.1', headers: Record<string, string> = {}) =>
+    a.inject({ method: 'POST', url: '/api/requests', payload, remoteAddress, headers });
+  const rellenar = (a: FastifyInstance, id: string, proof: Buffer, size = 1052, extra: Record<string, unknown> = {}, headers: Record<string, string> = {}) =>
+    a.inject({
+      method: 'POST',
+      url: `/api/requests/${id}/fill`,
+      payload: { proof: proof.toString('hex'), ciphertext: randomBytes(size).toString('base64url'), ephemeral: randomBytes(32).toString('base64url'), ...extra },
+      headers,
+    });
+  const recoger = (a: FastifyInstance, id: string, proof: Buffer) =>
+    a.inject({ method: 'POST', url: `/api/requests/${id}/open`, payload: { proof: proof.toString('hex') } });
+
+  it('crear → esperando → rellenar una vez → recoger una vez', async () => {
+    const r = nueva();
+    const created = await crear(app, r.body);
+    expect(created.statusCode).toBe(201);
+    const { id } = created.json() as { id: string };
+
+    expect((await recoger(app, id, r.open)).json()).toMatchObject({ status: 'waiting' });
+    expect((await rellenar(app, id, r.send)).statusCode).toBe(201);
+    const otra = await rellenar(app, id, r.send);
+    expect(otra.statusCode).toBe(409);
+    expect(otra.json()).toEqual({ error: 'already_filled' });
+
+    const listo = await recoger(app, id, r.open);
+    expect(listo.json()).toMatchObject({ status: 'ready' });
+    expect(Buffer.from((listo.json() as { ephemeral: string }).ephemeral, 'base64url')).toHaveLength(32);
+    expect((await recoger(app, id, r.open)).statusCode).toBe(404);
+  });
+
+  it('sin la prueba correcta la petición «no existe», para rellenar y para recoger', async () => {
+    const r = nueva();
+    const { id } = (await crear(app, r.body)).json() as { id: string };
+    expect((await rellenar(app, id, randomBytes(32))).statusCode).toBe(404);
+    expect((await recoger(app, id, randomBytes(32))).statusCode).toBe(404);
+    // El enlace de envío no sirve para recoger.
+    expect((await recoger(app, id, r.send)).statusCode).toBe(404);
+    expect((await recoger(app, id, r.open)).json()).toMatchObject({ status: 'waiting' });
+  });
+
+  it('se puede cancelar con el enlace de recogida', async () => {
+    const r = nueva();
+    const { id } = (await crear(app, r.body)).json() as { id: string };
+    await rellenar(app, id, r.send);
+    const cancelar = (proof: Buffer) => app.inject({ method: 'POST', url: `/api/requests/${id}/cancel`, payload: { proof: proof.toString('hex') } });
+    expect((await cancelar(r.send)).statusCode).toBe(404);
+    expect((await cancelar(r.open)).statusCode).toBe(204);
+    expect((await recoger(app, id, r.open)).statusCode).toBe(404);
+  });
+
+  it('valida el cifrado y la clave efímera', async () => {
+    const r = nueva();
+    const { id } = (await crear(app, r.body)).json() as { id: string };
+    expect((await rellenar(app, id, r.send, 1000)).statusCode).toBe(400);
+    expect((await rellenar(app, id, r.send, 1052, { ephemeral: 'corta' })).statusCode).toBe(400);
+    expect((await rellenar(app, id, r.send, 1052, { extra: 1 })).statusCode).toBe(400);
+  });
+
+  it('un contenido grande caduca como mucho en un día', async () => {
+    const r = nueva();
+    const { id } = (await crear(app, { ...r.body, ttl: 604_800 })).json() as { id: string };
+    const res = await rellenar(app, id, r.send, MAX_CIPHERTEXT_BYTES);
+    expect(res.statusCode).toBe(201);
+    const expires = Date.parse((res.json() as { expiresAt: string }).expiresAt);
+    expect(expires - Date.now()).toBeLessThanOrEqual(86_400_000 + 5000);
+  });
+
+  it('con CREATE_FROM: pedir solo desde casa, pero rellenar desde fuera (por el túnel)', async () => {
+    const tunel = { createFrom: ['172.16.0.0/12'], trustProxy: '172.16.0.0/12', trustCfFrom: ['172.16.0.0/12'] };
+    const casa = await buildApp(config(tunel), store);
+    const r = nueva();
+    const cf = { 'cf-connecting-ip': '203.0.113.9', 'cf-ray': 'abc-MAD' };
+    expect((await crear(casa, r.body, '172.18.0.9', cf)).statusCode).toBe(403);
+    const { id } = (await crear(casa, r.body, '172.18.0.3')).json() as { id: string };
+    expect((await rellenar(casa, id, r.send, 1052, {}, cf)).statusCode).toBe(201);
+    await casa.close();
+  });
+
+  it('las páginas de envío y recogida se sirven sin indexar', async () => {
+    for (const url of [`/r/${'A'.repeat(22)}`, `/p/${'A'.repeat(22)}`]) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['x-robots-tag']).toContain('noindex');
+    }
+  });
+});

@@ -1,14 +1,18 @@
 import { useSyncExternalStore, type MouseEvent } from 'react';
 
-/** Enrutador mínimo sobre la History API: `/` crea, `/s/:id` revela. */
-export type Route = { name: 'create' } | { name: 'reveal'; id: string };
+/** Enrutador mínimo sobre la History API: `/` crea, `/s/:id` revela, `/r/:id` envía a una petición, `/p/:id` la recoge. */
+export type Route =
+  | { name: 'create' }
+  | { name: 'reveal'; id: string }
+  | { name: 'send'; id: string }
+  | { name: 'pickup'; id: string };
 
 const NAV_EVENT = 'runa:navigate';
 
 export function matchRoute(pathname: string): Route {
-  const reveal = /^\/s\/([^/]+)\/?$/.exec(pathname);
+  const m = /^\/([spr])\/([^/]+)\/?$/.exec(pathname);
   // Sin decodificar: un id válido nunca lleva `%`, y así no hay excepciones.
-  if (reveal) return { name: 'reveal', id: reveal[1]! };
+  if (m) return { name: m[1] === 's' ? 'reveal' : m[1] === 'r' ? 'send' : 'pickup', id: m[2]! };
   return { name: 'create' };
 }
 

@@ -114,3 +114,17 @@ describe('SecretStore', () => {
     expect(s.usedBytes()).toBe(ciphertext.length * 2);
   });
 });
+
+describe('peticiones en el almacén', () => {
+  it('cuentan en el espacio usado y se purgan al caducar', () => {
+    const s = fresh();
+    const send = Buffer.alloc(32, 1);
+    const { id } = s.createRequest({ sendVerifier: sha(send), openVerifier: sha(Buffer.alloc(32, 2)), ttlSeconds: 60 });
+    expect(s.usedBytes()).toBe(0);
+    expect(s.fillRequest(id, send, ciphertext, Buffer.alloc(32))).toMatchObject({ status: 'ok' });
+    expect(s.usedBytes()).toBe(ciphertext.length);
+    clock += 61_000;
+    expect(s.purgeExpired()).toBe(1);
+    expect(s.usedBytes()).toBe(0);
+  });
+});

@@ -16,6 +16,7 @@ import { delay, errorMessage } from '../lib/errors';
 import { formatNumber, TTLS, ttlLabel } from '../lib/format';
 import { generatePassphrase, generatePassword } from '../lib/random';
 import { ResultView, type CreatedResult } from './ResultView';
+import { RequestForm, RequestResult, type CreatedRequest } from './RequestScreens';
 
 // El cifrado sin contraseña es instantáneo; un mínimo evita un parpadeo ilegible.
 const MIN_SEALING_MS = 700;
@@ -25,6 +26,8 @@ export function CreateScreen() {
   const [sealing, setSealing] = useState(false);
   const [result, setResult] = useState<CreatedResult | null>(null);
   const [burned, setBurned] = useState(false);
+  const [mode, setMode] = useState<'send' | 'request'>('send');
+  const [request, setRequest] = useState<CreatedRequest | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -36,12 +39,22 @@ export function CreateScreen() {
 
   const reset = () => {
     setResult(null);
+    setRequest(null);
     setBurned(false);
     focusHeading();
   };
 
-  const seal: SealState = sealing ? 'working' : burned ? 'burned' : result ? 'sealed' : 'idle';
-  const title = burned ? t.result.burnedTitle : result ? t.result.title : t.create.title;
+  const seal: SealState = sealing ? 'working' : burned ? 'burned' : result || request ? 'sealed' : 'idle';
+  const title = burned
+    ? t.result.burnedTitle
+    : result
+      ? t.result.title
+      : request
+        ? t.request.resultTitle
+        : mode === 'request'
+          ? t.request.title
+          : t.create.title;
+  const idle = !result && !request;
 
   return (
     <>
@@ -50,11 +63,36 @@ export function CreateScreen() {
         <h1 ref={headingRef} tabIndex={-1} className="hero__title">
           {title}
         </h1>
-        {!result ? <p className="hero__lead">{t.create.lead}</p> : null}
+        {idle && mode === 'send' ? <p className="hero__lead">{t.create.lead}</p> : null}
       </section>
+
+      {idle ? (
+        <div className="mode">
+          <Segmented
+            legend={t.request.modeLegend}
+            name="mode"
+            value={mode}
+            options={[
+              { value: 'send', label: t.request.modeSend },
+              { value: 'request', label: t.request.modeRequest },
+            ]}
+            onChange={setMode}
+            disabled={sealing}
+          />
+        </div>
+      ) : null}
 
       {result ? (
         <ResultView result={result} burned={burned} onBurned={() => setBurned(true)} onReset={reset} />
+      ) : request ? (
+        <RequestResult result={request} onReset={reset} />
+      ) : mode === 'request' ? (
+        <RequestForm
+          onCreated={(r) => {
+            setRequest(r);
+            focusHeading();
+          }}
+        />
       ) : (
         <CreateForm
           sealing={sealing}

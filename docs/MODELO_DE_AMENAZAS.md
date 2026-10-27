@@ -47,6 +47,18 @@ Análisis con la metodología **STRIDE**. Cada amenaza indica su mitigación y d
 | SC2 | Action de GitHub comprometida | Todas las actions **fijadas por SHA**, token con permisos mínimos, `persist-credentials: false`, OpenSSF Scorecard. | `.github/workflows/` |
 | SC3 | Secretos subidos al repositorio | gitleaks en cada push y PR. | `ci.yml` |
 
+## Pedir un secreto (v0.4.0)
+
+| # | Amenaza | Mitigación | Dónde |
+|---|---|---|---|
+| Q1 | Quien intercepta el **enlace de envío** lee lo que se envía | El enlace solo lleva la clave pública X25519; descifrar exige la privada, que va únicamente en el enlace de recogida. | `request.ts`, test «otra petición no puede abrirlo» |
+| Q2 | Quien conoce solo el id rellena, recoge o cancela | Pruebas derivadas de cada clave (`sendProof`, `openProof`); sin ellas, 404 y nada cambia. | `store.ts`, tests «sin la prueba correcta…» |
+| Q3 | Rellenar dos veces (sustituir lo enviado) | Solo una vez: después, 409. | `fillRequest`, tests |
+| Q4 | Usar las peticiones como alojamiento abierto (también con `CREATE_FROM`) | Rellenar exige una petición creada por alguien autorizado, una sola vez, con los mismos tamaños, cuota por cliente y tope de almacenamiento; contenidos grandes caducan en 1 día. | `app.ts` |
+| Q5 | Claves públicas maliciosas (orden pequeño) | Web Crypto rechaza el secreto compartido nulo; la sal liga `E ‖ A`. | `request.ts`, test |
+| Q6 | La clave privada queda a la vista | Va solo en el fragmento; la página no llama a la API al cargar y la borra de la barra al recoger o cancelar. No se guarda en almacenamiento. | `RequestScreens.tsx`, pruebas e2e |
+| Q7 | Alguien con el enlace de envío lo rellena antes que la persona correcta | Riesgo aceptado: el enlace de envío debe llegar por un canal fiable. Quien envía ve «ya recibió un secreto» si llega tarde. | `docs/PROTOCOLO.md` |
+
 ## Revisión externa (v0.3.0)
 
 Otra sesión revisó el código en solo lectura buscando lo que no cubría la auditoría de la v0.1.0:

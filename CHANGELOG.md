@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-10-27
+
+### Añadido
+
+- **Pedir un secreto**: genera un enlace de envío (para quien te tiene que mandar una contraseña o un archivo) y un enlace de recogida (solo para ti). Lo enviado se cifra en el navegador de quien envía con tu clave pública X25519; ni el servidor ni quien vea el enlace de envío pueden leerlo. Se rellena una sola vez y se recoge una sola vez. Ver [docs/PROTOCOLO.md](docs/PROTOCOLO.md#pedir-un-secreto).
+- Pruebas de extremo a extremo con Playwright en el CI: crear → revelar → «ya no existe», y pedir → enviar desde otro navegador → recoger, con cualquier error de consola (CSP, Trusted Types) como fallo.
+
+### Seguridad
+
+- Modelo de amenazas: entradas Q1-Q7 para las peticiones.
+
 ## [0.3.0] - 2026-10-25
 
 ### Cambiado (requiere acción si usas Cloudflare Tunnel)
@@ -66,7 +77,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.3.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/BertMarti/runa/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/BertMarti/runa/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/BertMarti/runa/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/BertMarti/runa/compare/v0.1.0...v0.2.0

@@ -36,12 +36,15 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 - [x] Cuota de bytes por cliente y hora, y caducidad máxima de 1 día para secretos grandes (R2).
 - [x] `trusted-types 'none'` (R3) y aviso cuando falta HTTPS (R4).
 
-## v0.4.0 «Mensajero» — siguiente
+## v0.4.0 «Mensajero» — ✅ hecha
 
-- [ ] **Petición de secreto**: genero un enlace para que *otra persona* me envíe un secreto cifrado con mi clave (flujo inverso, útil para pedir credenciales a un cliente).
+- [x] **Petición de secreto**: un enlace para que *otra persona* me envíe un secreto cifrado con mi clave pública (X25519).
+- [x] Tests end-to-end con Playwright en el CI (crear → revelar → 404; pedir → enviar → recoger).
+
+## v0.4.x «Alba» — siguiente
+
+- [ ] **Tema claro** y selector (pasar los ~90 colores fijos del CSS a variables).
 - [ ] **PWA instalable** con service worker propio (sin caché de la API).
-- [ ] **Tema claro** y selector.
-- [ ] Tests end-to-end con Playwright (crear → revelar → 404) en CI.
 - [ ] Captura y vídeo corto para el README generados por script.
 
 ## v0.5.0 «Forja» — más adelante

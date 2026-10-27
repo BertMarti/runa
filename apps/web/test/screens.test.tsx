@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
+import { createRequestKeys, parsePickupFragment, parseSendFragment, preparePickup, sealForRequest } from '../src/crypto';
 
 const ID = 'AbCdEfGhIjKlMnOpQrStUv';
 const KEY = 'A'.repeat(43);
@@ -196,5 +197,96 @@ describe('revisión externa (R2, R4)', () => {
     fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'hola' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cifrar y crear enlace' }));
     expect(await screen.findByText(/Vuelve a intentarlo en 30 min/, {}, { timeout: 5000 })).toBeTruthy();
+  });
+});
+
+describe('pedir un secreto (v0.4)', () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('crea la petición y enseña el enlace de envío y el de recogida', async () => {
+    let sent: Record<string, unknown> = {};
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === '/api/config') return json({ publicUrl: 'https://runa.example.com', createAllowed: true });
+      if (url === '/api/requests') {
+        sent = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return json({ id: ID, expiresAt: '2026-10-28T10:00:00.000Z' }, 201);
+      }
+      return json({}, 500);
+    });
+    at('/');
+    render(<App lang="es" />);
+    fireEvent.click(screen.getByLabelText('Pedir un secreto'));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Crear petición' }));
+    expect(await screen.findByText(/^https:\/\/runa\.example\.com\/r\/AbCdEfGhIjKlMnOpQrStUv#v1\.[A-Za-z0-9_-]{43}$/)).toBeTruthy();
+    expect(screen.getByText(/^https:\/\/runa\.example\.com\/p\/AbCdEfGhIjKlMnOpQrStUv#v1\.[A-Za-z0-9_-]{64}$/)).toBeTruthy();
+    // Al servidor solo van los verificadores: ni la clave pública ni la privada.
+    expect(Object.keys(sent).sort()).toEqual(['openVerifier', 'sendVerifier', 'ttl']);
+  });
+
+  it('enviar: cifra para la clave pública, lo sube y borra la clave de la barra', async () => {
+    const keys = await createRequestKeys();
+    let body: Record<string, string> = {};
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/requests/${ID}/fill`) {
+        body = JSON.parse(String(init?.body)) as Record<string, string>;
+        return json({ expiresAt: '2026-10-28T10:00:00.000Z' }, 201);
+      }
+      return json({}, 500);
+    });
+    at(`/r/${ID}#${keys.sendFragment}`);
+    render(<App lang="es" />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'clave del wifi' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cifrar y enviar' }));
+    expect(await screen.findByRole('heading', { name: 'Enviado' }, { timeout: 5000 })).toBeTruthy();
+    expect(location.hash).toBe('');
+    expect(Object.keys(body).sort()).toEqual(['ciphertext', 'ephemeral', 'proof']);
+    // Y solo quien tiene la clave privada lo puede abrir.
+    const handle = await preparePickup(parsePickupFragment(keys.pickupFragment)!);
+    expect((await handle.open(body.ciphertext!, body.ephemeral!)).text).toBe('clave del wifi');
+  });
+
+  it('enviar: si la petición ya se usó, lo dice', async () => {
+    const keys = await createRequestKeys();
+    fetchMock.mockImplementation(async () => json({ error: 'already_filled' }, 409));
+    at(`/r/${ID}#${keys.sendFragment}`);
+    render(<App lang="es" />);
+    fireEvent.change(screen.getByLabelText('Secreto'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cifrar y enviar' }));
+    expect(await screen.findByText(/ya recibió un secreto/, {}, { timeout: 5000 })).toBeTruthy();
+  });
+
+  it('enviar: un enlace incompleto no deja escribir', () => {
+    at(`/r/${ID}#v1.corto`);
+    render(<App lang="es" />);
+    expect(screen.getByText(/enlace de envío está incompleto/)).toBeTruthy();
+    expect(screen.queryByLabelText('Secreto')).toBeNull();
+  });
+
+  it('recoger: no llama a la API al cargar; espera y luego descifra', async () => {
+    const keys = await createRequestKeys();
+    const sealed = await sealForRequest({ text: 'pin 4321' }, parseSendFragment(keys.sendFragment)!);
+    let ready = false;
+    fetchMock.mockImplementation(async (input) => {
+      if (String(input) !== `/api/requests/${ID}/open`) return json({}, 500);
+      return ready
+        ? json({ status: 'ready', ciphertext: sealed.ciphertext, ephemeral: sealed.ephemeral })
+        : json({ status: 'waiting', expiresAt: '2026-10-28T10:00:00.000Z' });
+    });
+    at(`/p/${ID}#${keys.pickupFragment}`);
+    render(<App lang="es" />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Comprobar y abrir' }));
+    expect(await screen.findByText(/Todavía no te lo han enviado/, {}, { timeout: 5000 })).toBeTruthy();
+    expect(location.hash).not.toBe('');
+    ready = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Comprobar y abrir' }));
+    expect(await screen.findByText('pin 4321', {}, { timeout: 5000 })).toBeTruthy();
+    expect(location.hash).toBe('');
   });
 });
