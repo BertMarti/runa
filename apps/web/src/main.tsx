@@ -11,6 +11,10 @@ import './styles/seal.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { applyTheme, readTheme } from './lib/theme';
+
+// Antes de pintar: si se eligió un tema fijo, sin destello del otro.
+applyTheme(readTheme());
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Falta #root');

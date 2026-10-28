@@ -25,12 +25,12 @@ export function RuneSeal({ state, className }: { state: SealState; className?: s
       <svg className="seal__svg" viewBox="-120 -120 240 240" focusable="false">
         <defs>
           <linearGradient id={grad} x1="-1" y1="-1" x2="1" y2="1" gradientUnits="objectBoundingBox">
-            <stop offset="0.25" stopColor="#3ee6c1" />
-            <stop offset="0.75" stopColor="#8b7bff" />
+            <stop className="seal__stop seal__stop--a" offset="0.25" />
+            <stop className="seal__stop seal__stop--b" offset="0.75" />
           </linearGradient>
           <radialGradient id={core} r="0.5">
-            <stop offset="0" stopColor="#14213a" />
-            <stop offset="1" stopColor="#070a10" />
+            <stop className="seal__stop seal__stop--core-in" offset="0" />
+            <stop className="seal__stop seal__stop--core-out" offset="1" />
           </radialGradient>
         </defs>
 

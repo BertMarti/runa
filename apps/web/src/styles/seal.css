@@ -1,3 +1,20 @@
+/* Colores del sello: del tema (los gradientes del SVG los toman por clase, sin estilos en línea). */
+.seal__stop--a {
+  stop-color: var(--teal);
+}
+
+.seal__stop--b {
+  stop-color: var(--violet);
+}
+
+.seal__stop--core-in {
+  stop-color: var(--seal-core-in);
+}
+
+.seal__stop--core-out {
+  stop-color: var(--seal-core-out);
+}
+
 /* El sello rúnico: el único elemento con movimiento propio de la página. */
 
 .seal {
@@ -13,23 +30,23 @@
 }
 
 .seal__halo {
-  fill: rgb(62 230 193 / 0.06);
+  fill: rgb(var(--teal-rgb) / 0.06);
   filter: blur(10px);
   transition: fill 0.6s ease;
 }
 
 .seal__hair {
   fill: none;
-  stroke: rgb(170 196 235 / 0.16);
+  stroke: rgb(var(--line-rgb) / 0.16);
   stroke-width: 0.8;
 }
 
 .seal__hair--inner {
-  stroke: rgb(170 196 235 / 0.22);
+  stroke: rgb(var(--line-rgb) / 0.22);
 }
 
 .seal__hair--dash {
-  stroke: rgb(139 123 255 / 0.45);
+  stroke: rgb(var(--violet-rgb) / 0.45);
   stroke-dasharray: 1.5 4;
 }
 
@@ -82,7 +99,7 @@
 }
 
 .seal__mark {
-  filter: drop-shadow(0 0 6px rgb(62 230 193 / 0.35));
+  filter: drop-shadow(0 0 6px rgb(var(--teal-rgb) / 0.35));
   transition: filter 0.4s ease;
 }
 
@@ -102,7 +119,7 @@
 }
 
 .seal--working .seal__halo {
-  fill: rgb(139 123 255 / 0.2);
+  fill: rgb(var(--violet-rgb) / 0.2);
   animation: seal-pulse 1.3s ease-in-out infinite;
 }
 
@@ -113,11 +130,11 @@
 /* Sellado: un golpe de luz al cerrar. */
 
 .seal--sealed .seal__halo {
-  fill: rgb(62 230 193 / 0.16);
+  fill: rgb(var(--teal-rgb) / 0.16);
 }
 
 .seal--sealed .seal__mark {
-  filter: drop-shadow(0 0 10px rgb(62 230 193 / 0.7));
+  filter: drop-shadow(0 0 10px rgb(var(--teal-rgb) / 0.7));
 }
 
 .seal--sealed .seal__svg {
@@ -125,7 +142,7 @@
 }
 
 .seal--open .seal__halo {
-  fill: rgb(139 123 255 / 0.14);
+  fill: rgb(var(--violet-rgb) / 0.14);
 }
 
 /* Destruido: las runas se desprenden hacia fuera como ceniza. */
@@ -144,7 +161,7 @@
 }
 
 .seal--burned .seal__halo {
-  fill: rgb(255 140 110 / 0.12);
+  fill: rgb(var(--flame-rgb) / 0.12);
 }
 
 .seal--burned .seal__ember {
@@ -160,13 +177,13 @@
 
 @keyframes seal-pulse {
   50% {
-    fill: rgb(62 230 193 / 0.22);
+    fill: rgb(var(--teal-rgb) / 0.22);
   }
 }
 
 @keyframes mark-glow {
   50% {
-    filter: drop-shadow(0 0 14px rgb(139 123 255 / 0.9));
+    filter: drop-shadow(0 0 14px rgb(var(--violet-rgb) / 0.9));
   }
 }
 

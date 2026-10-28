@@ -49,6 +49,8 @@ async function openTab() {
 
 const tab = await openTab();
 const { send } = tab;
+// Las capturas principales, en el tema oscuro de siempre.
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 
 async function evaluate(expression) {
   const res = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -140,9 +142,25 @@ await sleep(3000);
 await evaluate('window.scrollTo(0, 0)');
 await shot('captura-destruido.png');
 
-// 7. Móvil
+// 7. Pedir un secreto: los dos enlaces
+await viewport(1280, 860);
+await go('about:blank');
+await go(`${BASE}/`);
+await evaluate(`[...document.querySelectorAll('label')].find(l => l.textContent.trim() === 'Pedir un secreto').click()`);
+await sleep(300);
+await clickText('Crear petición');
+await sleep(2500);
+await evaluate('window.scrollTo(0, 0)');
+await sleep(300);
+await shot('captura-pedir.png');
+
+// 8. Móvil (oscuro y «Alba», el tema claro)
 await viewport(390, 844, true);
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await go(`${BASE}/`);
 await shot('captura-movil.png');
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+await go(`${BASE}/`);
+await shot('captura-movil-claro.png');
 
 await tab.close();

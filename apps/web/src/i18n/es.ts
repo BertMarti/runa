@@ -11,6 +11,8 @@ export const es = {
   header: {
     home: 'RUNA, ir al inicio',
     language: 'Idioma',
+    theme: 'Tema: {name}. Pulsa para cambiarlo.',
+    themeNames: { auto: 'automático', light: 'claro', dark: 'oscuro' },
   },
   plural: {
     views: { one: '{n} lectura', other: '{n} lecturas' },

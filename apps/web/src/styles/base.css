@@ -1,14 +1,26 @@
-/* Tokens, reset, tipografía y fondo («runas bajo la aurora»). Solo tema oscuro. */
+/* Tokens, reset, tipografía y fondo: «runas bajo la aurora» (oscuro) y «Alba» (claro). */
 
 :root {
   color-scheme: dark;
+
+  /* Canales RGB: permiten las transparencias en los dos temas (rgb(var(--teal-rgb) / 0.3)). */
+  --teal-rgb: 62 230 193;
+  --violet-rgb: 139 123 255;
+  --danger-rgb: 255 117 144;
+  --ember-rgb: 255 178 122;
+  --flame-rgb: 255 140 110;
+  --line-rgb: 170 196 235;
+  --faint-rgb: 166 178 196;
+  /* Pozos (campos, enlaces) más hundidos que la tarjeta, y matiz de realce al pasar por encima. */
+  --well-rgb: 4 7 12;
+  --tint-rgb: 255 255 255;
 
   --bg: #070a10;
   --bg-raised: #0c1220;
   --surface: rgb(16 24 40 / 0.62);
   --surface-strong: rgb(20 30 50 / 0.86);
-  --line: rgb(170 196 235 / 0.13);
-  --line-strong: rgb(170 196 235 / 0.26);
+  --line: rgb(var(--line-rgb) / 0.13);
+  --line-strong: rgb(var(--line-rgb) / 0.26);
 
   --text: #e8eef6;
   --text-dim: #a6b2c4;
@@ -16,10 +28,18 @@
 
   --teal: #3ee6c1;
   --violet: #8b7bff;
+  --cyan: #63c9e0;
   --danger: #ff7590;
   --ember: #ffb27a;
-  --accent: linear-gradient(115deg, var(--teal) 0%, #63c9e0 45%, var(--violet) 100%);
+  --danger-ink: #ffc2cf;
+  --violet-ink: #d9d3ff;
+  --teal-ink: #c9f7ec;
+  --ember-ink: #ffe0cc;
+  --accent: linear-gradient(115deg, var(--teal) 0%, var(--cyan) 45%, var(--violet) 100%);
   --on-accent: #050810;
+  --aurora-opacity: 0.5;
+  --seal-core-in: #14213a;
+  --seal-core-out: #070a10;
 
   --f-display: 'Cinzel', 'Trajan Pro', Georgia, serif;
   --f-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -32,6 +52,83 @@
 
   --gutter: clamp(16px, 4vw, 32px);
   --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--teal);
+}
+
+/*
+ * «Alba»: la misma piedra al amanecer. Granito frío y pálido, tinta azul noche y la aurora reducida a un velo.
+ * Verde y violeta oscurecidos para que el texto blanco sobre el acento y los enlaces pasen AA.
+ * Se aplica si el sistema pide tema claro (y no se ha elegido el oscuro) o si se elige «Claro».
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --teal-rgb: 10 113 94;
+    --violet-rgb: 88 72 201;
+    --danger-rgb: 180 35 70;
+    --ember-rgb: 168 80 26;
+    --flame-rgb: 190 70 40;
+    --line-rgb: 31 45 70;
+    --faint-rgb: 86 100 122;
+    --well-rgb: 255 255 255;
+    --tint-rgb: 15 23 38;
+    --bg: #e8ecf1;
+    --bg-raised: #f1f4f8;
+    --surface: rgb(247 249 251 / 0.8);
+    --surface-strong: rgb(250 251 253 / 0.94);
+    --line: rgb(var(--line-rgb) / 0.14);
+    --line-strong: rgb(var(--line-rgb) / 0.28);
+    --text: #0f1726;
+    --text-dim: #3c4a5e;
+    --text-faint: #56647a;
+    --teal: #0a715e;
+    --violet: #5848c9;
+    --cyan: #1f7f99;
+    --danger: #b42346;
+    --ember: #a8501a;
+    --danger-ink: #8f1c38;
+    --violet-ink: #3f3196;
+    --teal-ink: #0a5a4c;
+    --ember-ink: #7a3a12;
+    --on-accent: #ffffff;
+    --aurora-opacity: 0.3;
+    --seal-core-in: #ffffff;
+    --seal-core-out: #dfe5ec;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --teal-rgb: 10 113 94;
+  --violet-rgb: 88 72 201;
+  --danger-rgb: 180 35 70;
+  --ember-rgb: 168 80 26;
+  --flame-rgb: 190 70 40;
+  --line-rgb: 31 45 70;
+  --faint-rgb: 86 100 122;
+  --well-rgb: 255 255 255;
+  --tint-rgb: 15 23 38;
+  --bg: #e8ecf1;
+  --bg-raised: #f1f4f8;
+  --surface: rgb(247 249 251 / 0.8);
+  --surface-strong: rgb(250 251 253 / 0.94);
+  --line: rgb(var(--line-rgb) / 0.14);
+  --line-strong: rgb(var(--line-rgb) / 0.28);
+  --text: #0f1726;
+  --text-dim: #3c4a5e;
+  --text-faint: #56647a;
+  --teal: #0a715e;
+  --violet: #5848c9;
+  --cyan: #1f7f99;
+  --danger: #b42346;
+  --ember: #a8501a;
+  --danger-ink: #8f1c38;
+  --violet-ink: #3f3196;
+  --teal-ink: #0a5a4c;
+  --ember-ink: #7a3a12;
+  --on-accent: #ffffff;
+  --aurora-opacity: 0.3;
+  --seal-core-in: #ffffff;
+  --seal-core-out: #dfe5ec;
 }
 
 *,
@@ -122,7 +219,7 @@ h1:focus-visible {
 }
 
 ::selection {
-  background: rgb(139 123 255 / 0.45);
+  background: rgb(var(--violet-rgb) / 0.45);
   color: #fff;
 }
 
@@ -162,7 +259,7 @@ h1:focus-visible {
   position: absolute;
   border-radius: 50%;
   filter: blur(70px);
-  opacity: 0.5;
+  opacity: var(--aurora-opacity);
   will-change: transform;
 }
 
@@ -171,7 +268,7 @@ h1:focus-visible {
   height: 46vh;
   left: 12vw;
   top: 26vh;
-  background: radial-gradient(closest-side, rgb(62 230 193 / 0.55), transparent);
+  background: radial-gradient(closest-side, rgb(var(--teal-rgb) / 0.55), transparent);
   animation: aurora-a 26s ease-in-out infinite alternate;
 }
 
@@ -180,7 +277,7 @@ h1:focus-visible {
   height: 52vh;
   right: 4vw;
   top: 20vh;
-  background: radial-gradient(closest-side, rgb(139 123 255 / 0.55), transparent);
+  background: radial-gradient(closest-side, rgb(var(--violet-rgb) / 0.55), transparent);
   animation: aurora-b 32s ease-in-out infinite alternate;
 }
 

@@ -53,6 +53,10 @@ Con **«Pedir un secreto»** (nuevo en la versión 0.4) le das la vuelta: RUNA t
 
 Lo que te envían se cifra en su navegador **para ti**: ni RUNA ni quien vea el enlace de envío pueden leerlo. Así ya no hace falta pedir a nadie que te mande una contraseña por correo.
 
+<p align="center">
+  <img src="docs/assets/captura-pedir.png" alt="Petición lista: el enlace para quien te lo envía y tu enlace de recogida, cada uno con su código QR" width="90%">
+</p>
+
 ---
 
 ## ✦ ¿Para qué sirve?
@@ -100,10 +104,14 @@ Piensa en RUNA como una **caja fuerte con una sola llave**:
 | 🎲 **Generar contraseña segura** | Crea una contraseña robusta y lista para enviar |
 | 💣 **Destruir ahora** | ¿Te has equivocado de persona? Bórralo antes de que lo abran |
 | 🌍 **Idioma** | Español e inglés |
+| 🌗 **Tema** | Oscuro, claro («Alba») o el de tu sistema |
+| 📲 **Instalable** | Añádela a la pantalla de inicio de tu móvil o a tu ordenador, como una app |
 
 <p align="center">
-  <img src="docs/assets/captura-movil.png" alt="RUNA en un móvil" width="300">
-  <br><sub>Funciona igual de bien en el móvil.</sub>
+  <img src="docs/assets/captura-movil.png" alt="RUNA en un móvil, con el tema oscuro" width="280">
+  &nbsp;
+  <img src="docs/assets/captura-movil-claro.png" alt="RUNA en un móvil, con el tema claro «Alba»" width="280">
+  <br><sub>Funciona igual de bien en el móvil, de noche o de día.</sub>
 </p>
 
 ---

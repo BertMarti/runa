@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-10-27 por lead (v0.4.0)
+Última actualización: 2026-10-28 por lead (v0.5.0)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -85,6 +85,13 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **Playwright** 1.64.1 (`npm run e2e`): en local, con la imagen `mcr.microsoft.com/playwright:v1.64.1-noble` (trae Node 24 y Chromium arm64): `docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp -v $PWD:/app -w /app --ipc=host mcr.microsoft.com/playwright:v1.64.1-noble npx playwright test` (antes `npm run build`).
 - El tema claro se pospuso a v0.4.x: hay ~90 colores fijos en el CSS que antes hay que pasar a variables.
 
+## v0.5.0 «Alba» (2026-10-28)
+
+- **Tema claro**: tokens en `base.css` con canales RGB (`--teal-rgb`, `--well-rgb` para pozos, `--tint-rgb` para realces…). «Alba» se aplica con `@media (prefers-color-scheme: light)` sobre `:root:not([data-theme='dark'])` y con `:root[data-theme='light']` (bloque duplicado a propósito: sin JS al cargar en automático). `lib/theme.ts` guarda `runa.theme` en localStorage (preferencia, no secreto). Verde del tema claro `#0a715e` (AA también como enlace sobre el fondo; `#0b7a66` daba 4,44).
+- Los `<stop>` del sello toman el color por clase (`stop-color` es CSS): nada de estilos en línea.
+- **Instalable sin service worker** (decisión): registrar uno exige una política de Trusted Types y no aporta nada sin servidor.
+- Iconos: `sh scripts/brand/icons.sh` (rsvg-convert). Capturas: `scripts/capture.mjs` (tema oscuro forzado salvo `captura-movil-claro.png`).
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.
@@ -96,4 +103,4 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 
 ## Pendiente inmediato
 
-Ver PLAN.md, v0.2.0.
+Ver PLAN.md (v0.6.0 «Forja»).

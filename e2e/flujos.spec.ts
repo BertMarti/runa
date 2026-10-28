@@ -90,3 +90,21 @@ test('una petición sin rellenar se queda esperando y se puede cancelar', async 
   await page.getByRole('button', { name: 'Cancelar la petición' }).click();
   await expect(page.getByText(/Petición cancelada/)).toBeVisible();
 });
+
+test('se puede instalar (manifest e iconos) y el tema claro carga sin errores', async ({ page, request }) => {
+  const manifest = await request.get('/manifest.webmanifest');
+  expect(manifest.ok()).toBe(true);
+  expect(manifest.headers()['content-type']).toContain('manifest+json');
+  const datos = (await manifest.json()) as { icons: { src: string }[] };
+  for (const icono of datos.icons) expect((await request.get(icono.src)).ok()).toBe(true);
+
+  const errores = vigilarConsola(page);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  const fondo = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(fondo).toBe('rgb(232, 236, 241)');
+  await page.getByRole('button', { name: /Tema: automático/ }).click();
+  await page.getByRole('button', { name: /Tema: claro/ }).click();
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(7, 10, 16)');
+  expect(errores).toEqual([]);
+});
