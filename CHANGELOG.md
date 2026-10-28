@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.5.0] - 2026-10-28
+
+### Añadido
+
+- **Tema claro «Alba»** y selector en la cabecera (automático, claro u oscuro). En automático sigue al sistema solo con CSS, sin destellos al cargar. Contraste AA comprobado.
+- **Instalable**: manifest e iconos (también *maskable* y para iOS), para añadir RUNA a la pantalla de inicio.
+- Capturas del README nuevas, también de «Pedir un secreto» y del tema claro.
+
+### Cambiado
+
+- Los ~90 colores fijos del CSS pasan a variables (canales RGB por tema); los gradientes del sello se toman por clase, sin estilos en línea.
+
+### Seguridad
+
+- Sin service worker a propósito: no aporta nada sin conexión y obligaría a permitir una política de Trusted Types. La CSP sigue con `trusted-types 'none'`.
+
 ## [0.4.0] - 2026-10-27
 
 ### Añadido
@@ -78,7 +94,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.4.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/BertMarti/runa/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/BertMarti/runa/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/BertMarti/runa/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/BertMarti/runa/compare/v0.2.0...v0.2.1

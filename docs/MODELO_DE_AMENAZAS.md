@@ -87,7 +87,7 @@ Otra sesión revisó el código en solo lectura buscando lo que no cubría la au
 |---|---|---|---|
 | R1 | media | `Cf-Connecting-IP` se creía desde cualquier red privada: detrás de Caddy o nginx, un cliente se inventaba una IP por petición y esquivaba los límites. Además, la guía recomendaba `TRUST_PROXY: "127.0.0.1"`, pero dentro del contenedor la conexión llega desde la pasarela de Docker (comprobado), así que todos compartían un límite. | `TRUST_CF_FROM` explícito (vacío por defecto); guía corregida y `header_up -Cf-Connecting-IP` para otros proxies. Test R1. |
 | R2 | media | Sin cuota de bytes, una IP llenaba 512 MB en ~6 min y dejaba el servicio sin espacio 7 días. | Cuota por cliente y hora (`CREATE_QUOTA_MB`) y caducidad máxima de 1 día para secretos de más de 1 MiB (servidor y web). Tests «cuotas» y `quota.test.ts`. |
-| R3 | baja | Trusted Types obligatorios, pero se podía crear cualquier política. | `trusted-types 'none'`. Test de cabeceras. |
+| R3 | baja | Trusted Types obligatorios, pero se podía crear cualquier política. | `trusted-types 'none'`. Test de cabeceras. Por eso RUNA es instalable sin service worker (v0.5.0): registrarlo exigiría una política. |
 | R4 | baja | Por HTTP fuera de `localhost` no hay Web Crypto y el error parecía culpa del navegador. | Aviso claro al cargar («RUNA necesita HTTPS»). Test. |
 
 ## Fuera de alcance (riesgos aceptados)

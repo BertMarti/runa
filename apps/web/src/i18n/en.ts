@@ -8,6 +8,8 @@ export const en: Messages = {
   header: {
     home: 'RUNA, go to home',
     language: 'Language',
+    theme: 'Theme: {name}. Press to change it.',
+    themeNames: { auto: 'automatic', light: 'light', dark: 'dark' },
   },
   plural: {
     views: { one: '{n} view', other: '{n} views' },

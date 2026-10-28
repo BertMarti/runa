@@ -41,13 +41,16 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 - [x] **Petición de secreto**: un enlace para que *otra persona* me envíe un secreto cifrado con mi clave pública (X25519).
 - [x] Tests end-to-end con Playwright en el CI (crear → revelar → 404; pedir → enviar → recoger).
 
-## v0.4.x «Alba» — siguiente
+## v0.5.0 «Alba» — ✅ hecha
 
-- [ ] **Tema claro** y selector (pasar los ~90 colores fijos del CSS a variables).
-- [ ] **PWA instalable** con service worker propio (sin caché de la API).
-- [ ] Captura y vídeo corto para el README generados por script.
+- [x] **Tema claro** («Alba») y selector automático / claro / oscuro; los colores fijos del CSS pasan a variables.
+- [x] **Instalable** (manifest e iconos), **sin service worker**: RUNA necesita el servidor para todo, así que no
+      aportaría modo sin conexión, y registrarlo obligaría a abrir una política de Trusted Types (`trusted-types 'none'`).
+- [x] Capturas del README por script, también de «Pedir un secreto» y del tema claro.
 
-## v0.5.0 «Forja» — más adelante
+## v0.6.0 «Forja» — más adelante
+
+- [ ] Vídeo corto para el README generado por script.
 
 - [ ] **CLI** `runa send < fichero` / `runa open <enlace>` en Go, compatible con el protocolo v1.
 - [x] Integración con **ARIA** (adelantada): módulo `modulos/runa/` con el protocolo en Python, herramientas `runa_compartir` y `runa_generar`, mosaico y aviso de caída. Compatibilidad comprobada en los dos sentidos (`apps/web/test/compat-python.test.ts`).
