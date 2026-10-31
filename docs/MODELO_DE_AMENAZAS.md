@@ -80,6 +80,35 @@ Comprobado por la auditoría: separación de dominios (info y AAD), sin reutiliz
 pequeño rechazados, PKCS#8 de formato fijo, transacciones sin carreras, ninguna llamada a la API al cargar,
 fragmentos borrados tras usarse y respuestas validadas.
 
+## CLI `runa` (v0.6.0)
+
+La CLI ([cli/](../cli/README.md)) cambia el entorno: en lugar de una pestaña aislada del navegador, una terminal con
+historial, otros procesos del mismo equipo y acceso al disco.
+
+| # | Amenaza | Mitigación | Dónde |
+|---|---|---|---|
+| C1 | La contraseña queda en el **historial del shell** o la ve cualquiera con **`ps`** | No hay opción ni variable de entorno para la contraseña: solo se lee de la terminal (`/dev/tty`, `CONIN$` en Windows) sin eco, y si se pulsa Ctrl-C se restaura el eco. El texto del secreto tampoco se admite como argumento (`send` lo rechaza): va por la entrada estándar. | `internal/tty`, `internal/app` `cmdSend`, test «Uso» |
+| C2 | El **enlace** (con la clave) queda en el historial o en `ps` al pasarlo como argumento | Todas las órdenes aceptan el enlace sin argumento: lo leen de la entrada estándar o lo piden a la terminal sin eco. Se documenta como la forma recomendada. **Riesgo aceptado** si se pasa como argumento. | `readLink`, `cli/README.md` |
+| C3 | El enlace o el contenido quedan en el ***scrollback*** de la terminal, `tmux`/`screen` o el registro de una sesión SSH | `send` y `request` escriben solo los enlaces en la salida estándar, para poder redirigirlos (a `wl-copy` o a un archivo) sin verlos. **Riesgo aceptado**: lo que se muestra en pantalla queda en la pantalla. | `cli/README.md` |
+| C4 | Un mensaje de error filtra la clave (p. ej., `url.Parse` o `net/http` repiten la URL completa) | El fragmento se separa a mano antes de analizar la URL y nunca se pasa a `net/url` ni a `net/http`; los errores de red se despojan de la URL; ningún mensaje incluye enlace, id, prueba ni contenido. Los tests comprueban que la salida de errores no contiene fragmentos ni textos, y que al servidor no le llegan. | `internal/link`, `internal/api` `networkError`, `scenarios_test.go` |
+| C5 | El texto descifrado **inyecta secuencias de escape** en la terminal (cambiar el título, borrar la pantalla, esconder texto con `\r`, invertir con U+202E) | Si la salida es una terminal, los controles C0 (salvo `\t` y `\n`), DEL, C1 y los bidireccionales se muestran como `�` y se avisa; redirigido o con `--raw`, sale exacto. | `tty.ForDisplay`, test «secuencias de escape» |
+| C6 | Un adjunto con nombre hostil **escribe fuera** de la carpeta (`../`, rutas absolutas, enlaces simbólicos), **sobrescribe** un archivo o usa un nombre de dispositivo de Windows | `safeFileName` (el mismo que la web, comprobado con vectores), escritura dentro de `os.Root` con `O_CREATE` + `O_EXCL` (no sigue enlaces simbólicos ni pisa nada: prueba `nombre (1).ext`…), permisos 0600, prefijo `_` para `CON`, `NUL`, `COM1`… y para nombres que empiezan por `-`. | `internal/app` `saveFile`, `localName`, test «adjunto» |
+| C7 | Perder el secreto por un error local después de que el servidor lo haya borrado | La carpeta de destino se abre **antes** de pedir el secreto; si el adjunto no se puede guardar, el texto se muestra igualmente. | `openOutDir`, test «carpeta de destino» |
+| C8 | La CLI deriva **otra clave** que la web para la misma contraseña (la web aplica NFC; la biblioteca estándar de Go no tiene NFC) | Las contraseñas con caracteres que NFC podría cambiar (marcas combinantes, jamos hangul, caracteres de compatibilidad; tabla generada desde Node) se **rechazan** con un mensaje claro, en vez de derivar una clave distinta y gastar un intento. | `internal/protocol/nfc.go`, test «contraseña NFD» |
+| C9 | Servidor o red maliciosos: redirecciones a otro anfitrión, respuestas gigantes, conexiones colgadas, http en claro | Solo https (http únicamente en `localhost`, `127.0.0.1`, `[::1]`), TLS ≥ 1.2, ninguna redirección, tiempos máximos, cuerpos acotados a lo que permiten `limits.ts` y respuestas validadas como en la web. | `internal/api`, `internal/link`, `client_test.go` |
+| C10 | Binario de la CLI manipulado (cadena de suministro) | Biblioteca estándar más `golang.org/x/term` (verificados por `go.sum`, Dependabot con 7 días de espera); binarios estáticos con `-trimpath`, `SHA256SUMS` y **atestación de procedencia** firmada (`gh attestation verify`). | `cli-release.yml` |
+| C11 | Restos de claves en memoria | Las claves, contraseñas y PKCS#8 se ponen a cero tras usarse. **Limitación**: Go puede haber copiado datos (recolector de basura, la contraseña como `string` para `crypto/pbkdf2`, la clave AES expandida dentro de `crypto/aes`). | `protocol.Wipe` |
+
+### Auditoría independiente de la CLI (v0.6.0)
+
+Sin hallazgos altos ni medios. Los tres bajos, corregidos con tests:
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| CL1 | El **nombre del adjunto** se escribía en la terminal sin filtrar: `safeFileName` (compartido con la web) deja pasar los controles C1 (U+009B empieza una secuencia de escape en xterm). | `localName` cambia por `_` todo lo que `tty.IsUnsafeRune` considera peligroso y la ruta pasa por `tty.ForDisplay`. Test `TestLocalName`. |
+| CL2 | Con `--out` en una carpeta **sin permiso de escritura**, `open` destruía el secreto y perdía el adjunto (C7 no se cumplía). | `openOutDir` crea y borra un archivo de prueba antes de llamar al servidor. Test `TestOpenOutDirExigeEscritura`. |
+| CL3 | El servidor puede publicar los enlaces en otro origen (`PUBLIC_URL`) sin que quien usa `--server` lo sepa. | Igual que en la web, se respeta, pero ahora se **avisa** por la salida de errores. Test `TestAvisoPublicURL`. |
+
 ## Revisión externa (v0.3.0)
 
 Otra sesión revisó el código en solo lectura buscando lo que no cubría la auditoría de la v0.1.0:

@@ -156,6 +156,27 @@ P importa `a` (la clave pública `A` sale del JWK de la privada), deriva `openPr
   envío no se aprende si el disco está lleno ni se gasta la cuota de nadie.
 - Cada envío usa una clave efímera nueva.
 
+## Otras implementaciones
+
+Además de la web, hablan el protocolo v1 el módulo de ARIA (Python) y la CLI `runa` ([cli/](../cli/README.md), Go con
+la biblioteca estándar). Las dos se comprueban con vectores (`apps/web/test/compat-python.test.ts` y
+`compat-go.test.ts` ⇄ `cli/internal/protocol/compat_test.go`); la CLI, además, byte a byte: con la misma `K` y el
+mismo IV produce el mismo cifrado que la web. Detalles que una implementación nueva debe reproducir:
+
+- **Envoltorio**: la cabecera es exactamente `JSON.stringify({ text, file: { name, type, size } })` (en ese orden),
+  así que solo se escapan `"`, `\` y los controles C0 (`\b \f \n \r \t` abreviados, el resto `\u00xx` en minúsculas);
+  U+2028/U+2029 y el resto de Unicode van tal cual en UTF-8. El texto se mide en unidades UTF-16 (`string.length`).
+- **Nombre del adjunto**: `safeFileName` trabaja en unidades UTF-16 y recorta a 200; si el corte parte un par
+  sustituto, la cabecera lleva un sustituto suelto escapado (`\ud83d`).
+- **Lectura de la cabecera**: claves con su nombre exacto (sin ignorar mayúsculas), UTF-8 estricto, `file` ausente o
+  «falso» en el sentido de JavaScript (`null`, `0`, `""`, `false`) = sin adjunto.
+- **base64url**: sin relleno; como `atob`, se aceptan bits sobrantes no nulos en el último carácter.
+- **Clave de recogida**: PKCS#8 de 48 bytes con la cabecera DER fija `302e020100300506032b656e04220420` (la CLI la
+  exige; Web Crypto no importaría otra cosa).
+- **NFC de la contraseña**: la web aplica `normalize('NFC')`. Sin una implementación de NFC a mano (la biblioteca
+  estándar de Go no la trae), la CLI rechaza las contraseñas que NFC podría cambiar en lugar de derivar otra clave
+  (ver C8 en el [modelo de amenazas](MODELO_DE_AMENAZAS.md)).
+
 ## Versionado
 
 El prefijo `v1` del fragmento y de las etiquetas `info` permite introducir `v2` (p. ej. Argon2id cuando haya soporte nativo) sin romper los enlaces existentes.

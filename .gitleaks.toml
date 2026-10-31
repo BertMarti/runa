@@ -1,0 +1,9 @@
+# Reglas de gitleaks: las de siempre, más una excepción muy acotada.
+[extend]
+useDefault = true
+
+# Vectores de compatibilidad entre la web y la CLI: claves y pruebas generadas al azar por los tests
+# (apps/web/test/compat-go.test.ts), sin valor fuera de ellos. Solo estos dos archivos, nada más de cli/.
+[allowlist]
+description = "Vectores de prueba generados (CLI)"
+paths = ['''(^|/)cli/testdata/desde-(ts|go)\.json$''']

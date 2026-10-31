@@ -34,6 +34,11 @@ apps/
     src/components/  piezas de interfaz
     src/i18n/        español e inglés
     test/            tests del protocolo y de la interfaz
+cli/               CLI `runa` en Go (solo biblioteca estándar + golang.org/x/term)
+  cmd/runa/          punto de entrada
+  internal/protocol/ protocolo v1 (traducción de web/src/crypto), vectores en testdata/
+  internal/api/      cliente HTTP (https, sin redirecciones, respuestas acotadas)
+  internal/app/      órdenes send, open, burn, request, reply, pickup
 docs/              protocolo, amenazas, arquitectura, despliegue
 .github/           CI, CodeQL, imagen Docker, Scorecard, Dependabot
 ```
@@ -49,4 +54,5 @@ docs/              protocolo, amenazas, arquitectura, despliegue
 | Un único origen para web y API | La CSP puede ser `'self'` en todo y no hace falta CORS. |
 | Imagen distroless | Sin shell ni gestor de paquetes: si alguien entra, no tiene herramientas. |
 | Fastify | Validación con JSON Schema integrada y buen rendimiento en una Raspberry Pi. |
+| CLI en Go con la biblioteca estándar | Binarios estáticos sin dependencias para cualquier sistema; HKDF, PBKDF2, X25519 y AES-GCM vienen en `crypto/`, sin librerías de terceros. La compatibilidad con la web se comprueba byte a byte con vectores en los dos sentidos. |
 | React sin framework de CSS | Control total del diseño y de la CSP (sin estilos en línea generados). |

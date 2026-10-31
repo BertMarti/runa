@@ -160,6 +160,8 @@ git clone https://github.com/BertMarti/runa.git && cd runa && docker compose up 
 
 Ábrelo en <http://localhost:8484>. Para usarlo desde fuera de casa, sigue la [guía de despliegue](docs/DESPLIEGUE.md). Combina muy bien con [HEIMDALL](https://github.com/BertMarti/HEIMDALL), la VPN para entrar en casa desde fuera.
 
+> ⌨️ **¿Prefieres la terminal?** La CLI `runa` hace lo mismo que la web: `echo 'clave' | runa send` te da el enlace y `runa open` lo abre. Ver [cli/README.md](cli/README.md).
+
 > 🤖 **¿Usas [ARIA](https://github.com/BertMarti/ARIA)?** RUNA tiene módulo propio: pídele *«comparte la clave del wifi por RUNA»* o *«genérame una contraseña nueva y compártela»* y te devuelve el enlace. Ver `modulos/runa/` en ARIA.
 
 ---
@@ -171,6 +173,7 @@ Si quieres saber cómo funciona por dentro:
 | Documento | Qué cuenta |
 |---|---|
 | [Protocolo criptográfico](docs/PROTOCOLO.md) | Cómo se cifra, qué viaja y qué no |
+| [CLI `runa`](cli/README.md) | Enviar, abrir y pedir secretos desde la terminal |
 | [Modelo de amenazas](docs/MODELO_DE_AMENAZAS.md) | Cada ataque que hemos considerado y cómo se frena |
 | [Arquitectura](docs/ARQUITECTURA.md) | Piezas del proyecto y decisiones |
 | [Despliegue](docs/DESPLIEGUE.md) | HTTPS, variables y endurecimiento |

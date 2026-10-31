@@ -6,7 +6,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Añadido
 
+- **CLI `runa`** en Go ([cli/README.md](cli/README.md)): `send`, `open`, `burn`, `request`, `reply` y `pickup` desde la terminal, compatibles con la web en los dos sentidos (un enlace de la CLI se abre en la web y al revés). Cifra en local solo con la biblioteca estándar de Go; contraseñas y enlaces por la terminal sin eco; adjuntos con nombre seguro, permisos 0600 y sin sobrescribir. Binarios estáticos para Linux, macOS y Windows (amd64 y arm64) en cada versión, con `SHA256SUMS` y atestación de procedencia.
 - **Métricas para Prometheus** (`/api/metrics`), desactivadas por defecto y solo con `METRICS_TOKEN`: secretos y peticiones vivos, espacio usado y tope, y respuestas por patrón de ruta y código. Sin ids, IP ni tamaños.
+
+### Seguridad
+
+- Modelo de amenazas: entradas C1-C11 para la CLI (historial del shell, `ps`, *scrollback*, secuencias de escape en la terminal, escritura de adjuntos, contraseñas que NFC cambiaría, cadena de suministro de los binarios).
+- Compatibilidad CLI ⇄ web comprobada byte a byte con vectores (`cli/testdata/`) y en vivo contra el servidor real en el CI.
 
 ## [0.5.0] - 2026-10-28
 

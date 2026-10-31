@@ -1,6 +1,6 @@
 ---
 name: security-check
-description: Lista de comprobación de seguridad de RUNA antes de abrir o fusionar un PR. Úsala siempre que cambies apps/, Dockerfile, compose.yaml o .github/.
+description: Lista de comprobación de seguridad de RUNA antes de abrir o fusionar un PR. Úsala siempre que cambies apps/, cli/, Dockerfile, compose.yaml o .github/.
 ---
 
 # Comprobación de seguridad de RUNA
@@ -16,4 +16,5 @@ Ejecuta en orden y no declares el trabajo terminado si algo falla.
 7. Si cambian límites: `apps/server/src/limits.ts` y `apps/web/src/crypto/limits.ts` coinciden.
 8. Si cambia el protocolo: `docs/PROTOCOLO.md` actualizado y tests nuevos en `apps/web/test/crypto.test.ts`.
 9. Si hay dependencias nuevas: justificación en el PR y sin scripts de instalación (`npm install-scripts ls`).
-10. Lanza el subagente `security-auditor` sobre el diff y resuelve lo que encuentre.
+10. Si cambia `cli/`: `cd cli && go vet ./... && test -z "$(gofmt -l .)" && go test ./...`; `go.mod` sin dependencias nuevas salvo `golang.org/x/term`; ningún `fmt.Print*`/`log` con enlaces, fragmentos, contraseñas o contenido fuera de la salida estándar prevista.
+11. Lanza el subagente `security-auditor` sobre el diff y resuelve lo que encuentre.

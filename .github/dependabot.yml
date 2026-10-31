@@ -37,3 +37,10 @@ updates:
       # Solo versiones LTS de Node: se actualiza el digest, no la versión mayor.
       - dependency-name: node
         update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: gomod
+    directory: /cli
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

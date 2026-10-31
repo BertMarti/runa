@@ -1,0 +1,86 @@
+name: Publicar la CLI
+
+# Al etiquetar una versión (vX.Y.Z): binarios estáticos de `runa` para Linux, macOS y Windows (amd64 y arm64),
+# SHA256SUMS, atestación de procedencia (SLSA, firmada con Sigstore) y subida a la release de GitHub.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar binarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          # Sin caché en la publicación: se compila desde cero con los módulos verificados por go.sum.
+          cache: false
+      - name: Comprobar y probar
+        working-directory: cli
+        run: |
+          go mod verify
+          go vet ./...
+          go test -count=1 ./...
+      - name: Compilar
+        working-directory: cli
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -eu
+          mkdir -p ../dist-cli
+          for os in linux darwin windows; do
+            for arch in amd64 arm64; do
+              ext=""; [ "$os" = windows ] && ext=".exe"
+              out="../dist-cli/runa-${VERSION}-${os}-${arch}${ext}"
+              CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -buildvcs=false \
+                -ldflags "-s -w -buildid= -X main.version=${VERSION}" -o "$out" ./cmd/runa
+            done
+          done
+          cd ../dist-cli && sha256sum runa-* > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: runa-cli
+          path: dist-cli/
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Atestar y subir a la release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # subir los binarios a la release
+      id-token: write # firmar la atestación con Sigstore (OIDC)
+      attestations: write # guardar la atestación en GitHub
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runa-cli
+          path: dist-cli
+      - name: Atestación de procedencia
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: 'dist-cli/runa-*'
+      - name: Subir a la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          # La release la crea quien publica (skill /release); si aún no existe, se crea aquí como borrador.
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" --verify-tag --draft --title "$TAG" --notes "Ver CHANGELOG.md."
+          fi
+          gh release upload "$TAG" dist-cli/* --repo "$REPO" --clobber
