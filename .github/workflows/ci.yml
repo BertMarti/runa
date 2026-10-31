@@ -60,6 +60,53 @@ jobs:
             test-results/
           retention-days: 7
 
+  cli:
+    name: CLI en Go (formato, vet, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - name: Módulos sin alterar (go.sum)
+        run: go mod verify
+      - name: Formato (gofmt)
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "Sin gofmt: $unformatted"; exit 1; fi
+      - run: go vet ./...
+      - name: Compila para Windows y macOS
+        run: GOOS=windows go vet ./... && GOOS=darwin go vet ./...
+      # Incluye la compatibilidad con la web: abre cli/testdata/desde-ts.json y vuelve a cifrarlo byte a byte.
+      - run: go test -race -count=1 ./...
+
+  cli-e2e:
+    name: CLI contra el servidor real y la web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: scripts/cli-e2e.sh
+
   secrets:
     name: Búsqueda de secretos (gitleaks)
     runs-on: ubuntu-latest
