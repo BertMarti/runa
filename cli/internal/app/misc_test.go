@@ -1,6 +1,9 @@
 package app
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -56,6 +59,9 @@ func TestLocalName(t *testing.T) {
 		"console.log":      "console.log",
 		"-rf":              "_-rf",
 		"":                 "archivo",
+		// Revisión: los controles C1 y bidireccionales no llegan ni al disco ni a la terminal.
+		"\u009b2J\u009d0;X\u009cinforme.txt": "_2J_0;X_informe.txt",
+		"factura\u2066.pdf":                  "factura.pdf", // ya lo quita safeFileName
 	} {
 		if got := localName(in); got != want {
 			t.Errorf("localName(%q) = %q, se esperaba %q", in, got, want)
@@ -73,5 +79,45 @@ func TestParseTTL(t *testing.T) {
 		if _, err := parseTTL(in); err == nil {
 			t.Errorf("%q aceptado", in)
 		}
+	}
+}
+
+// Revisión: una carpeta de solo lectura se rechaza **antes** de llamar al servidor (abrir destruye el secreto).
+func TestOpenOutDirExigeEscritura(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root escribe en cualquier carpeta")
+	}
+	dir := filepath.Join(t.TempDir(), "solo-lectura")
+	if err := os.Mkdir(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	if root, err := openOutDir(dir); err == nil || !strings.Contains(err.Error(), "no se puede escribir") {
+		if root != nil {
+			_ = root.Close()
+		}
+		t.Fatalf("se aceptó una carpeta sin permiso de escritura: %v", err)
+	}
+	root, err := openOutDir(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	entries, _ := os.ReadDir(root.Name())
+	if len(entries) != 0 {
+		t.Errorf("la prueba de escritura dejó restos: %v", entries)
+	}
+}
+
+// Revisión: si el servidor publica los enlaces en otro origen (PUBLIC_URL), se avisa.
+func TestAvisoPublicURL(t *testing.T) {
+	var buf bytes.Buffer
+	env := &Env{Stderr: &buf}
+	noticePublicURL(env, "https://runa.example", "https://runa.example")
+	if buf.Len() != 0 {
+		t.Errorf("aviso sin motivo: %q", buf.String())
+	}
+	noticePublicURL(env, "https://interno.example", "https://runa.example")
+	if !strings.Contains(buf.String(), "https://runa.example") || !strings.Contains(buf.String(), "PUBLIC_URL") {
+		t.Errorf("falta el aviso: %q", buf.String())
 	}
 }

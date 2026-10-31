@@ -61,9 +61,9 @@ func ReadSecret(prompt string) ([]byte, error) {
 	return b, nil
 }
 
-// isUnsafeRune: lo que puede alterar la terminal o engañar a la vista: controles C0 (salvo \t y \n), DEL,
+// IsUnsafeRune: lo que puede alterar la terminal o engañar a la vista: controles C0 (salvo \t y \n), DEL,
 // controles C1 (empiezan secuencias de escape en algunas terminales) y controles bidireccionales.
-func isUnsafeRune(r rune) bool {
+func IsUnsafeRune(r rune) bool {
 	switch {
 	case r == '\t' || r == '\n':
 		return false
@@ -91,7 +91,7 @@ func ForDisplay(s string) (string, bool) {
 			b.WriteRune(r)
 			continue
 		}
-		if isUnsafeRune(r) {
+		if IsUnsafeRune(r) {
 			b.WriteRune('�')
 			changed = true
 			continue

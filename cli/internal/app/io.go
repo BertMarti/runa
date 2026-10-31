@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -126,11 +127,20 @@ func readPayload(env *Env, filePath string, keepNewline bool) (protocol.Payload,
 
 // openOutDir abre la carpeta de destino de los adjuntos **antes** de llamar al servidor: abrir destruye el
 // secreto, así que un error de carpeta después sería perderlo.
+// También comprueba que se puede **escribir** en ella (una carpeta de solo lectura se abre sin error).
 func openOutDir(dir string) (*os.Root, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, fmt.Errorf("no se puede usar la carpeta de destino: %w", cause(err))
 	}
+	probe := ".runa-prueba-" + rand.Text()
+	f, err := root.OpenFile(probe, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		_ = root.Close()
+		return nil, fmt.Errorf("no se puede escribir en la carpeta de destino: %w", cause(err))
+	}
+	_ = f.Close()
+	_ = root.Remove(probe)
 	return root, nil
 }
 
@@ -145,8 +155,15 @@ var windowsReserved = map[string]bool{
 
 // localName es el nombre con el que se guarda: el de safeFileName (sin rutas ni controles, igual que la web),
 // sin nombres de dispositivo de Windows y sin empezar por «-» (no se confunde con una opción al usarlo después).
+// Además cambia por «_» los controles C1 y bidireccionales que safeFileName deja pasar (la web no los necesita
+// quitar; aquí el nombre se escribe en la terminal y una U+009B empezaría una secuencia de escape).
 func localName(name string) string {
-	name = protocol.SafeFileName(name)
+	name = strings.Map(func(r rune) rune {
+		if tty.IsUnsafeRune(r) {
+			return '_'
+		}
+		return r
+	}, protocol.SafeFileName(name))
 	stem, _, _ := strings.Cut(name, ".")
 	if windowsReserved[strings.ToUpper(strings.TrimRight(stem, " "))] || strings.HasPrefix(name, "-") {
 		name = "_" + name
@@ -195,7 +212,8 @@ func writePayload(env *Env, p protocol.Payload, root *os.Root, raw bool) error {
 		if err != nil {
 			saveErr = err
 		} else {
-			fmt.Fprintf(env.Stderr, "Adjunto guardado en %s (%d bytes, permisos 0600).\n", path, len(p.File.Data))
+			shown, _ := tty.ForDisplay(path) // la carpeta (--out) la eligió quien ejecuta, pero tampoco se fía
+			fmt.Fprintf(env.Stderr, "Adjunto guardado en %s (%d bytes, permisos 0600).\n", shown, len(p.File.Data))
 		}
 	}
 	if p.Text == "" {

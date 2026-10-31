@@ -99,6 +99,16 @@ historial, otros procesos del mismo equipo y acceso al disco.
 | C10 | Binario de la CLI manipulado (cadena de suministro) | Biblioteca estándar más `golang.org/x/term` (verificados por `go.sum`, Dependabot con 7 días de espera); binarios estáticos con `-trimpath`, `SHA256SUMS` y **atestación de procedencia** firmada (`gh attestation verify`). | `cli-release.yml` |
 | C11 | Restos de claves en memoria | Las claves, contraseñas y PKCS#8 se ponen a cero tras usarse. **Limitación**: Go puede haber copiado datos (recolector de basura, la contraseña como `string` para `crypto/pbkdf2`, la clave AES expandida dentro de `crypto/aes`). | `protocol.Wipe` |
 
+### Auditoría independiente de la CLI (v0.6.0)
+
+Sin hallazgos altos ni medios. Los tres bajos, corregidos con tests:
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| CL1 | El **nombre del adjunto** se escribía en la terminal sin filtrar: `safeFileName` (compartido con la web) deja pasar los controles C1 (U+009B empieza una secuencia de escape en xterm). | `localName` cambia por `_` todo lo que `tty.IsUnsafeRune` considera peligroso y la ruta pasa por `tty.ForDisplay`. Test `TestLocalName`. |
+| CL2 | Con `--out` en una carpeta **sin permiso de escritura**, `open` destruía el secreto y perdía el adjunto (C7 no se cumplía). | `openOutDir` crea y borra un archivo de prueba antes de llamar al servidor. Test `TestOpenOutDirExigeEscritura`. |
+| CL3 | El servidor puede publicar los enlaces en otro origen (`PUBLIC_URL`) sin que quien usa `--server` lo sepa. | Igual que en la web, se respeta, pero ahora se **avisa** por la salida de errores. Test `TestAvisoPublicURL`. |
+
 ## Revisión externa (v0.3.0)
 
 Otra sesión revisó el código en solo lectura buscando lo que no cubría la auditoría de la v0.1.0:

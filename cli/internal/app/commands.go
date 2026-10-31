@@ -90,6 +90,7 @@ func cmdSend(ctx context.Context, env *Env, args []string) error {
 	base := origin
 	if cfg.PublicURL != "" {
 		base = cfg.PublicURL
+		noticePublicURL(env, origin, base)
 	}
 	fmt.Fprintln(env.Stdout, link.Format(base, link.Secret, created.ID, sealed.Fragment))
 	fmt.Fprintf(env.Stderr, "Secreto creado: caduca el %s o tras %d %s.\n", formatTime(created.ExpiresAt), views, plural(views, "lectura", "lecturas"))
@@ -305,6 +306,7 @@ func cmdRequest(ctx context.Context, env *Env, args []string) error {
 	base := origin
 	if cfg.PublicURL != "" {
 		base = cfg.PublicURL
+		noticePublicURL(env, origin, base)
 	}
 	fmt.Fprintf(env.Stdout, "envío: %s\nrecogida: %s\n",
 		link.Format(base, link.Send, created.ID, keys.SendFragment),
@@ -442,5 +444,13 @@ func cmdPickup(ctx context.Context, env *Env, args []string) error {
 		if err := env.Sleep(ctx, pickupInterval); err != nil {
 			return err
 		}
+	}
+}
+
+// noticePublicURL avisa si el servidor pide publicar los enlaces en otro origen (PUBLIC_URL), como hace la web:
+// quien comparte debe saber a qué sitio va a mandar a la otra persona.
+func noticePublicURL(env *Env, origin, public string) {
+	if public != origin {
+		fmt.Fprintf(env.Stderr, "Aviso: el servidor publica los enlaces en %s (PUBLIC_URL), no en %s.\n", public, origin)
 	}
 }
