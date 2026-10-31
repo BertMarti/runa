@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Añadido
+
+- **Métricas para Prometheus** (`/api/metrics`), desactivadas por defecto y solo con `METRICS_TOKEN`: secretos y peticiones vivos, espacio usado y tope, y respuestas por patrón de ruta y código. Sin ids, IP ni tamaños.
+
 ## [0.5.0] - 2026-10-28
 
 ### Añadido

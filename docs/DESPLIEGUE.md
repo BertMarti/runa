@@ -66,6 +66,7 @@ secretos.example.com {
 | `TRUST_PROXY` | `false` | `true`, o lista de IP/CIDR de proxies de confianza. |
 | `TRUST_CF_FROM` | (vacío: nunca) | IP/CIDR de los conectores de **Cloudflare Tunnel** cuya cabecera `Cf-Connecting-IP` se cree para los límites. Solo si RUNA está detrás de `cloudflared`; detrás de cualquier otro proxy, déjalo vacío. |
 | `CREATE_QUOTA_MB` | `64` | MB cifrados que un mismo cliente puede guardar por hora (429 al superarlo). Evita que una sola IP llene `MAX_STORAGE_MB`. |
+| `METRICS_TOKEN` | (vacío: sin métricas) | Activa `GET /api/metrics` para **Prometheus**, solo con `Authorization: Bearer <token>`. Al menos 32 caracteres (`openssl rand -hex 32`). Ver [Métricas](#métricas). |
 | `HSTS` | `false` | Envía `Strict-Transport-Security` (solo detrás de HTTPS). |
 | `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug` o `silent`. |
 | `CREATE_FROM` | (vacío: desde cualquier sitio) | IP o CIDR desde las que se pueden **crear** secretos, p. ej. `172.16.0.0/12,192.168.0.0/16`. Leer siempre se puede. Con esta opción, todo lo que llega por Cloudflare (`Cf-Connecting-IP`/`Cf-Ray`) se trata como externo. |
@@ -113,6 +114,37 @@ Resultado:
 
 Si algún día Cloudflare queda bloqueado en tu red o tu país, los enlaces públicos no abrirán hasta que se
 levante el bloqueo.
+
+## Métricas
+
+Con `METRICS_TOKEN`, RUNA publica en `/api/metrics` (formato de texto de Prometheus) **solo recuentos**:
+
+| Métrica | Qué es |
+|---|---|
+| `runa_secrets_active` | Secretos guardados que aún no se han leído ni han caducado. |
+| `runa_requests_active{state}` | Peticiones de secreto vivas: `waiting` (sin rellenar) o `filled`. |
+| `runa_storage_used_bytes` / `runa_storage_limit_bytes` | Espacio cifrado usado y tope (`MAX_STORAGE_MB`). |
+| `runa_http_responses_total{route,status}` | Respuestas de la API por **patrón** de ruta (`/api/secrets/:id/open`) y código. |
+| `runa_build_info{version}`, `runa_start_time_seconds` | Versión y arranque. |
+
+Nunca llevan ids, IP, tamaños de un secreto concreto ni nada de un cuerpo. Sin el token (o con uno incorrecto,
+comparado en tiempo constante) la respuesta es 401; sin `METRICS_TOKEN`, la ruta no existe. Ten en cuenta que
+quien lea las métricas ve **cuándo** se crean y se abren secretos (no cuáles): dales el mismo trato que a los
+registros del proxy.
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: runa
+    metrics_path: /api/metrics
+    authorization:
+      credentials_file: /etc/prometheus/runa-token   # el mismo valor que METRICS_TOKEN
+    static_configs:
+      - targets: ['runa:8080']
+```
+
+Alertas útiles: `runa_storage_used_bytes / runa_storage_limit_bytes > 0.8` (se acerca el 507) y un aumento de
+`runa_http_responses_total{status="429"}` (alguien choca con los límites).
 
 ## Raspberry Pi
 

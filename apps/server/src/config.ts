@@ -33,6 +33,8 @@ export interface Config {
   trustCfFrom: string[] | null;
   /** Bytes cifrados que un mismo cliente puede guardar por hora. */
   createQuotaBytes: number;
+  /** Token para `GET /api/metrics` (Prometheus). `null` (por defecto) = sin métricas. */
+  metricsToken: string | null;
 }
 
 function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number, max: number): number {
@@ -64,6 +66,14 @@ export function parseNetworks(raw: string | undefined, name = 'CREATE_FROM'): st
     }
   }
   return nets;
+}
+
+function metricsToken(raw: string | undefined): string | null {
+  if (raw === undefined || raw === '') return null;
+  if (!/^[\x21-\x7e]{32,256}$/.test(raw)) {
+    throw new Error('METRICS_TOKEN debe tener al menos 32 caracteres sin espacios (p. ej. openssl rand -hex 32)');
+  }
+  return raw;
 }
 
 function parsePublicUrl(raw: string | undefined): string | null {
@@ -99,5 +109,6 @@ export function loadConfig(env = process.env): Config {
     publicUrl: parsePublicUrl(env.PUBLIC_URL),
     trustCfFrom: parseNetworks(env.TRUST_CF_FROM, 'TRUST_CF_FROM'),
     createQuotaBytes: int(env, 'CREATE_QUOTA_MB', 64, 1, 1_048_576) * 1024 * 1024,
+    metricsToken: metricsToken(env.METRICS_TOKEN),
   };
 }

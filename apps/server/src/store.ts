@@ -260,6 +260,18 @@ export class SecretStore {
     return row.bytes;
   }
 
+  /** Recuentos para las métricas: solo filas vivas (las caducadas pueden seguir hasta la próxima purga). */
+  stats(): { secrets: number; waiting: number; filled: number } {
+    const now = this.now();
+    return this.db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM secrets WHERE expires_at > ?1) AS secrets,
+                (SELECT COUNT(*) FROM requests WHERE expires_at > ?1 AND filled_at IS NULL) AS waiting,
+                (SELECT COUNT(*) FROM requests WHERE expires_at > ?1 AND filled_at IS NOT NULL) AS filled`,
+      )
+      .get(now) as { secrets: number; waiting: number; filled: number };
+  }
+
   count(): number {
     return (this.db.prepare('SELECT COUNT(*) AS n FROM secrets').get() as { n: number }).n;
   }

@@ -14,6 +14,7 @@ services:
       # TRUST_PROXY: "172.16.0.0/12"   # IP/CIDR de tu proxy inverso (con el puerto publicado, la pasarela de Docker)
       # TRUST_CF_FROM: "172.16.0.0/12" # solo detrás de Cloudflare Tunnel (ver docs/DESPLIEGUE.md)
       # CREATE_QUOTA_MB: "64"          # MB por cliente y hora
+      # METRICS_TOKEN: ""              # activa /api/metrics para Prometheus (openssl rand -hex 32)
       # HSTS: "true"                  # solo si se sirve por HTTPS
     volumes:
       - runa-data:/data

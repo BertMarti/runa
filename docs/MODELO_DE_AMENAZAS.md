@@ -34,6 +34,7 @@ Análisis con la metodología **STRIDE**. Cada amenaza indica su mitigación y d
 | I5 | Fuga por `Referer` | `Referrer-Policy: no-referrer` (y el fragmento nunca va en el `Referer`). | `app.ts` (helmet) |
 | I6 | Restos de secretos borrados en disco | `PRAGMA secure_delete = ON` + `wal_checkpoint(TRUNCATE)` periódico. | `store.ts` |
 | I7 | Registros con datos sensibles | El registro solo guarda método, patrón de ruta y código: sin IP, sin id, sin cuerpo. | `app.ts` `logSerializers` |
+| I7b | Las métricas filtran actividad | Desactivadas por defecto; con `METRICS_TOKEN`, solo recuentos agregados y patrones de ruta (sin ids, IP ni tamaños), token obligatorio comparado en tiempo constante. Riesgo aceptado: quien tiene el token ve *cuándo* hay actividad, como en los registros del proxy. | `metrics.ts`, tests «métricas para Prometheus» |
 | I8 | XSS que robe secretos o claves | CSP estricta sin `unsafe-inline` ni `unsafe-eval`, **Trusted Types** obligatorios y `trusted-types 'none'` (nadie, ni una dependencia, puede crear una política), React escapa el texto, ESLint prohíbe `innerHTML` y `dangerouslySetInnerHTML`. | `app.ts`, `eslint.config.js` |
 | I9 | Un adjunto HTML se ejecuta en nuestro origen, o un nombre engañoso (`factura<U+202E>fdp.exe`) | La descarga usa siempre `application/octet-stream`; el nombre se sanea (rutas, control, bidireccionales, anchura cero, puntos finales). | `envelope.ts` `safeFileName`, `RevealScreen` |
 | I10 | Clickjacking | `frame-ancestors 'none'` + `X-Frame-Options: DENY`. | `app.ts` |

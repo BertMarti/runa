@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp, clientIp, rateLimitKey } from '../src/app.js';
+import { serverVersion } from '../src/metrics.js';
 import { loadConfig, parseNetworks, type Config } from '../src/config.js';
 import { MAX_CIPHERTEXT_BYTES } from '../src/limits.js';
 import { SecretStore } from '../src/store.js';
@@ -27,6 +28,7 @@ function config(overrides: Partial<Config> = {}): Config {
     publicUrl: null,
     trustCfFrom: null,
     createQuotaBytes: 64 * 1024 * 1024,
+    metricsToken: null,
     ...overrides,
   };
 }
@@ -608,5 +610,71 @@ describe('pedir un secreto: auditoría (P1)', () => {
     await rellenar(app, id, r.send);
     await app.inject({ method: 'POST', url: `/api/requests/${id}/open`, payload: { proof: r.open.toString('hex') } });
     expect((await rellenar(app, id, r.send)).statusCode).toBe(404);
+  });
+});
+
+describe('métricas para Prometheus', () => {
+  const token = 'm'.repeat(40);
+  let mapp: FastifyInstance;
+  let mstore: SecretStore;
+  beforeEach(async () => {
+    mstore = new SecretStore(':memory:');
+    mapp = await buildApp(config({ metricsToken: token }), mstore);
+  });
+  afterEach(async () => {
+    await mapp.close();
+    mstore.close();
+  });
+  const leer = (authorization?: string) =>
+    mapp.inject({ method: 'GET', url: '/api/metrics', headers: authorization ? { authorization } : {} });
+
+  it('sin METRICS_TOKEN no existen', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/metrics', headers: { authorization: `Bearer ${token}` } });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).not.toContain('runa_');
+  });
+
+  it('exigen el token', async () => {
+    for (const auth of [undefined, 'Bearer otro', `Basic ${token}`, `Bearer ${token}x`]) {
+      const res = await leer(auth);
+      expect(res.statusCode).toBe(401);
+      expect(res.body).not.toContain('runa_');
+    }
+    expect((await leer(`Bearer ${token}`)).statusCode).toBe(200);
+  });
+
+  it('cuentan secretos, peticiones y respuestas sin ids ni IP', async () => {
+    const b = body();
+    const created = await mapp.inject({ method: 'POST', url: '/api/secrets', payload: b.payload, remoteAddress: '198.51.100.9' });
+    const { id } = created.json<{ id: string }>();
+    await mapp.inject({ method: 'POST', url: '/api/requests', payload: { sendVerifier: hex(), openVerifier: hex(), ttl: 3600 } });
+    await mapp.inject({ method: 'POST', url: `/api/secrets/${id}/open`, payload: { link: hex(), token: hex() } });
+
+    const res = await leer(`Bearer ${token}`);
+    expect(res.headers['content-type']).toContain('text/plain; version=0.0.4');
+    expect(res.headers['cache-control']).toBe('no-store');
+    const text = res.body;
+    expect(text).toContain('runa_secrets_active 1');
+    expect(text).toContain('runa_requests_active{state="waiting"} 1');
+    expect(text).toContain('runa_requests_active{state="filled"} 0');
+    expect(text).toContain('runa_storage_limit_bytes 67108864');
+    expect(text).toMatch(/runa_storage_used_bytes [1-9]\d*/);
+    expect(text).toContain('runa_http_responses_total{route="/api/secrets",status="201"} 1');
+    expect(text).toContain('runa_http_responses_total{route="/api/secrets/:id/open",status="404"} 1');
+    expect(text).not.toContain(id);
+    expect(text).not.toContain('198.51.100.9');
+    expect(text).toContain(`runa_build_info{version="${serverVersion()}"} 1`);
+  });
+
+  it('la versión sale del package.json del servidor', () => {
+    expect(serverVersion()).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(serverVersion(os.tmpdir())).toBe('desconocida');
+  });
+
+  it('METRICS_TOKEN corto o con espacios no arranca', () => {
+    expect(loadConfig({}).metricsToken).toBeNull();
+    expect(loadConfig({ METRICS_TOKEN: 'a'.repeat(32) }).metricsToken).toBe('a'.repeat(32));
+    expect(() => loadConfig({ METRICS_TOKEN: 'corto' })).toThrow(/METRICS_TOKEN/);
+    expect(() => loadConfig({ METRICS_TOKEN: `${'a'.repeat(32)} b` })).toThrow(/METRICS_TOKEN/);
   });
 });
