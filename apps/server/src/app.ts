@@ -18,6 +18,7 @@ import {
   TOKEN_PATTERN,
   TTL_OPTIONS,
 } from './limits.js';
+import { bearerMatches, Metrics, serverVersion } from './metrics.js';
 import { ByteQuota } from './quota.js';
 import type { SecretStore } from './store.js';
 
@@ -238,6 +239,24 @@ export async function buildApp(config: Config, store: SecretStore): Promise<Fast
   });
 
   app.get('/api/health', { config: { rateLimit: false } }, async () => ({ status: 'ok' }));
+
+  // Métricas para Prometheus: solo si hay METRICS_TOKEN, y siempre con él (ver docs/DESPLIEGUE.md).
+  if (config.metricsToken) {
+    const token = config.metricsToken;
+    const metrics = new Metrics(store, config.maxStorageBytes, serverVersion());
+    app.addHook('onResponse', async (req, reply) => {
+      if (!API_PATH.test(req.url)) return;
+      // Patrón de la ruta, nunca la URL (que lleva ids). Lo que no casa con ninguna ruta se agrupa.
+      metrics.record(req.routeOptions.url ?? 'otra', reply.statusCode);
+    });
+    app.get('/api/metrics', async (req, reply) => {
+      if (!bearerMatches(req.headers.authorization, token)) {
+        reply.header('WWW-Authenticate', 'Bearer');
+        return reply.status(401).send({ error: 'unauthorized' });
+      }
+      return reply.type('text/plain; version=0.0.4; charset=utf-8').send(metrics.render());
+    });
+  }
 
   const allowedIp = createAllowed(config.createFrom);
   /**
