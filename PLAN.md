@@ -52,7 +52,7 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 
 - [ ] Vídeo corto para el README generado por script.
 
-- [ ] **CLI** `runa send < fichero` / `runa open <enlace>` en Go, compatible con el protocolo v1.
+- [x] **CLI** `runa send < fichero` / `runa open <enlace>` en Go, compatible con el protocolo v1 ([cli/README.md](cli/README.md)): también `burn`, `request`, `reply` y `pickup`; vectores de compatibilidad en los dos sentidos y binarios con procedencia en cada versión.
 - [x] Integración con **ARIA** (adelantada): módulo `modulos/runa/` con el protocolo en Python, herramientas `runa_compartir` y `runa_generar`, mosaico y aviso de caída. Compatibilidad comprobada en los dos sentidos (`apps/web/test/compat-python.test.ts`).
 - [ ] Argon2id (protocolo v2) cuando esté disponible en Web Crypto, o vía WASM auditado.
 - [x] Métricas sin datos personales para Prometheus (`METRICS_TOKEN`, `/api/metrics`).

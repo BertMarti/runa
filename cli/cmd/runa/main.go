@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"os"
-	"os/signal"
 
 	"github.com/BertMarti/runa/cli/internal/app"
 	"github.com/BertMarti/runa/cli/internal/tty"
@@ -14,7 +13,6 @@ import (
 var version = "dev"
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	env := &app.Env{
 		Stdin:       os.Stdin,
 		Stdout:      os.Stdout,
@@ -25,7 +23,7 @@ func main() {
 		ReadSecret:  tty.ReadSecret,
 		Version:     version,
 	}
-	code := app.Run(ctx, env, os.Args[1:])
-	stop()
-	os.Exit(code)
+	// Sin capturar Ctrl-C: interrumpe en cualquier momento (también mientras se lee la entrada estándar). Al pedir
+	// una contraseña, tty.ReadSecret lo captura un instante para devolver el eco a la terminal antes de salir.
+	os.Exit(app.Run(context.Background(), env, os.Args[1:]))
 }

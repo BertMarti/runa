@@ -92,6 +92,14 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **Instalable sin service worker** (decisión): registrar uno exige una política de Trusted Types y no aporta nada sin servidor.
 - Iconos: `sh scripts/brand/icons.sh` (rsvg-convert). Capturas: `scripts/capture.mjs` (tema oscuro forzado salvo `captura-movil-claro.png`).
 
+## CLI `runa` (rama feat/cli, sin publicar)
+
+- Go con la **biblioteca estándar** para la cripto + `golang.org/x/term` (y su `x/sys`). `main` en `cli/cmd/runa` para que `go install …/cli/cmd/runa` dé el binario `runa`.
+- **Sin NFC** en la biblioteca estándar: la CLI rechaza las contraseñas que NFC podría cambiar (tabla `nfc_tabla.go` generada con Node 24 desde `gen/nfc.mjs`) en vez de derivar otra clave. Decisión: mejor un error claro que un intento fallido.
+- Envoltorio idéntico byte a byte: JSON escrito a mano como `JSON.stringify`; `safeFileName` en unidades UTF-16 (el recorte a 200 puede dejar un sustituto suelto). `compat_test.go` vuelve a cifrar lo de la web con la misma K e IV.
+- Contraseñas solo desde `/dev/tty` (sin opción ni variable de entorno). Enlaces: argumento, entrada estándar o terminal sin eco. `request` escribe `envío: …` y `recogida: …` en stdout.
+- `cli-release.yml` sube binarios a la release de la etiqueta; si aún no existe, la crea como **borrador**.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.
@@ -99,6 +107,8 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - `@fastify/static` v10: en `setHeaders` el objeto es una respuesta de Fastify (`res.header`, no `res.setHeader`).
 - `trustProxy` de Fastify no acepta números en sus tipos: solo `true` o una lista de IP/CIDR.
 - `pkill -f patrón` dentro de un comando que contiene el patrón se mata a sí mismo.
+- En las pruebas web, happy-dom sustituye `URL`: `fileURLToPath(new URL(…, import.meta.url))` falla; usar `path.resolve(import.meta.dirname, …)`.
+- El detector de carreras de Go (`-race`) no funciona en el kernel de la Raspberry Pi (VMA de 47 bits); en el CI sí.
 - Playwright: volver a abrir la misma URL cambiando solo el `#` es una navegación dentro del documento y el enrutador no reinicia la pantalla (el `#` ya se borró). En las pruebas, pasar antes por `about:blank`. `getByLabel('Secreto')` necesita `exact: true`. Con `reducedMotion: 'reduce'` las etiquetas animadas quedan «estables».
 
 ## Pendiente inmediato

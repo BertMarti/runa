@@ -12,6 +12,7 @@ Web autoalojable para compartir secretos (texto y un archivo) **cifrados de extr
 - **Servidor**: Fastify 5, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/static`. TypeScript estricto.
 - **Web**: React 19 + Vite 8 + TypeScript estricto. CSS propio, sin framework. Fuentes con `@fontsource` (nunca CDN).
 - **Cripto**: solo Web Crypto API nativa (AES-256-GCM, HKDF, PBKDF2). **Prohibido** añadir librerías criptográficas.
+- **CLI** (`cli/`): Go, solo biblioteca estándar (`crypto/hkdf`, `crypto/pbkdf2`, `crypto/ecdh`, AES-GCM) más `golang.org/x/term`. `go vet ./... && go test ./...` en `cli/`.
 - **Tests**: Vitest (happy-dom en la web, `fastify.inject` en el servidor).
 - **Calidad**: ESLint 10 + typescript-eslint, `tsc --noEmit`.
 
@@ -34,6 +35,7 @@ Si tu Node local es < 24, antepón `./dk.sh` (ejecuta el comando en un contenedo
 - `apps/server/src/app.ts` rutas, esquemas, cabeceras, límites. `store.ts` SQLite. `config.ts` entorno. `limits.ts` límites.
 - `apps/web/src/crypto/` **protocolo v1** (ver `docs/PROTOCOLO.md`). Cualquier cambio aquí exige actualizar el documento y los tests.
 - `apps/web/src/screens/` pantallas; `components/` piezas; `i18n/` textos ES/EN.
+- `cli/` CLI en Go. `internal/protocol/` es la traducción del protocolo: cualquier cambio en `apps/web/src/crypto/` exige regenerar los vectores de `cli/testdata/` (ver `cli/README.md`) y que ambos lados sigan abriéndolos.
 - `docs/` protocolo, modelo de amenazas, arquitectura, despliegue.
 
 ## Reglas de seguridad (bloqueantes en revisión)
@@ -46,7 +48,7 @@ Si tu Node local es < 24, antepón `./dk.sh` (ejecuta el comando en un contenedo
 6. **Nunca** guardar secretos, claves o fragmentos en `localStorage`, `sessionStorage`, consola ni URL con `?`.
 7. Las descargas de adjuntos usan siempre `application/octet-stream` y `safeFileName`.
 8. Todo SQL es una sentencia preparada.
-9. Los límites de `apps/server/src/limits.ts` y `apps/web/src/crypto/limits.ts` deben coincidir.
+9. Los límites de `apps/server/src/limits.ts`, `apps/web/src/crypto/limits.ts` y `cli/internal/protocol/limits.go` deben coincidir (lo comprueban `compat-go.test.ts` y `compat_test.go`).
 10. Cada dependencia nueva se justifica en el PR; preferir la plataforma (Web Crypto, `node:sqlite`, `fetch`).
 11. Las actions de GitHub se fijan por **SHA** con el número de versión en un comentario.
 12. Cualquier regla nueva de seguridad llega con un test que falla si se quita.
