@@ -48,7 +48,7 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
       aportaría modo sin conexión, y registrarlo obligaría a abrir una política de Trusted Types (`trusted-types 'none'`).
 - [x] Capturas del README por script, también de «Pedir un secreto» y del tema claro.
 
-## v0.6.0 «Forja» — más adelante
+## v0.6.0 «Forja» — publicada en parte (CLI y métricas)
 
 - [ ] Vídeo corto para el README generado por script.
 

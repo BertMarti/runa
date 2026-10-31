@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-10-31
+
 ### Añadido
 
 - **CLI `runa`** en Go ([cli/README.md](cli/README.md)): `send`, `open`, `burn`, `request`, `reply` y `pickup` desde la terminal, compatibles con la web en los dos sentidos (un enlace de la CLI se abre en la web y al revés). Cifra en local solo con la biblioteca estándar de Go; contraseñas y enlaces por la terminal sin eco; adjuntos con nombre seguro, permisos 0600 y sin sobrescribir. Binarios estáticos para Linux, macOS y Windows (amd64 y arm64) en cada versión, con `SHA256SUMS` y atestación de procedencia.
@@ -13,6 +15,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 - Modelo de amenazas: entradas C1-C11 para la CLI (historial del shell, `ps`, *scrollback*, secuencias de escape en la terminal, escritura de adjuntos, contraseñas que NFC cambiaría, cadena de suministro de los binarios).
 - Compatibilidad CLI ⇄ web comprobada byte a byte con vectores (`cli/testdata/`) y en vivo contra el servidor real en el CI.
+- Auditoría independiente de la CLI: ningún hallazgo alto ni medio; tres bajos corregidos con tests (CL1-CL3: nombres de adjunto con controles C1, carpeta de destino sin permiso de escritura, aviso cuando `PUBLIC_URL` es otro origen). CodeQL también analiza el código Go.
 
 ## [0.5.0] - 2026-10-28
 
@@ -104,7 +107,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.5.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/BertMarti/runa/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/BertMarti/runa/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/BertMarti/runa/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/BertMarti/runa/compare/v0.2.1...v0.3.0

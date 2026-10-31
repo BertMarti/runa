@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-10-28 por lead (v0.5.0)
+Última actualización: 2026-10-31 por lead (v0.6.0)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -92,7 +92,12 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **Instalable sin service worker** (decisión): registrar uno exige una política de Trusted Types y no aporta nada sin servidor.
 - Iconos: `sh scripts/brand/icons.sh` (rsvg-convert). Capturas: `scripts/capture.mjs` (tema oscuro forzado salvo `captura-movil-claro.png`).
 
-## CLI `runa` (rama feat/cli, sin publicar)
+## v0.6.0 «Forja» (2026-10-31)
+
+- **Métricas** (PR #8): `/api/metrics` solo con `METRICS_TOKEN` (≥ 32 caracteres, Bearer en tiempo constante); sin token la ruta no existe. Rutas contadas por patrón (`req.routeOptions.url`), nunca la URL. `serverVersion()` lee `package.json` junto al código (Docker) o una carpeta arriba (desarrollo).
+- **CLI** (PR #9): auditoría independiente sin altos ni medios; CL1-CL3 corregidos. `.gitleaks.toml` exime **solo** `cli/testdata/desde-{ts,go}.json` (las «token» de los vectores son aleatorias); comprobado que fuera de ahí sigue detectando.
+
+## CLI `runa` (detalles)
 
 - Go con la **biblioteca estándar** para la cripto + `golang.org/x/term` (y su `x/sys`). `main` en `cli/cmd/runa` para que `go install …/cli/cmd/runa` dé el binario `runa`.
 - **Sin NFC** en la biblioteca estándar: la CLI rechaza las contraseñas que NFC podría cambiar (tabla `nfc_tabla.go` generada con Node 24 desde `gen/nfc.mjs`) en vez de derivar otra clave. Decisión: mejor un error claro que un intento fallido.
