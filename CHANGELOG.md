@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [1.0.0] - 2026-11-02 «Estable»
+
+Primera versión estable. No trae funciones nuevas: es el compromiso de que lo que hay ya no se rompe.
+
+### Añadido
+
+- [Estabilidad y compatibilidad](docs/ESTABILIDAD.md): qué queda congelado en toda la 1.x (enlaces, protocolo v1, API, rutas, variables de configuración, datos, CLI y métricas), la excepción por seguridad y qué no es interfaz pública.
+- La imagen Docker se publica también como `ghcr.io/bertmarti/runa:1` (última 1.x) y `:1.0` (última 1.0.z), además de `:1.0.0`.
+
+### Cambiado
+
+- El README y la hoja de ruta reflejan la versión estable; Argon2id (protocolo v2, junto al v1) y la demostración pública pasan a la 1.x.
+
 ## [0.7.0] - 2026-11-02
 
 ### Añadido
@@ -120,7 +133,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.7.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/BertMarti/runa/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/BertMarti/runa/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/BertMarti/runa/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/BertMarti/runa/compare/v0.4.0...v0.5.0

@@ -15,8 +15,11 @@ También puedes usar la imagen publicada (amd64 y arm64, con SBOM y procedencia)
 ```bash
 docker run -d --name runa -p 127.0.0.1:8484:8080 \
   --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
-  -v runa-data:/data ghcr.io/bertmarti/runa:latest
+  -v runa-data:/data ghcr.io/bertmarti/runa:1
 ```
+
+`:1` es siempre la última 1.x: recibe los arreglos sin cambios incompatibles ([ESTABILIDAD.md](ESTABILIDAD.md)). Para fijar
+una versión exacta, usa `:1.0.0` (o su digest); `:latest` también existe, pero saltaría a una futura 2.x.
 
 ## HTTPS con Caddy
 

@@ -48,7 +48,7 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
       aportaría modo sin conexión, y registrarlo obligaría a abrir una política de Trusted Types (`trusted-types 'none'`).
 - [x] Capturas del README por script, también de «Pedir un secreto» y del tema claro.
 
-## v0.6.0 «Forja» — publicada en parte (CLI y métricas)
+## v0.6.0 «Forja» — ✅ hecha (lo pendiente pasa a v1.x)
 
 - [x] Demostración animada para el README generada por script (`scripts/demo.sh`).
 
@@ -56,6 +56,16 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 - [x] Integración con **ARIA** (adelantada): módulo `modulos/runa/` con el protocolo en Python, herramientas `runa_compartir` y `runa_generar`, mosaico y aviso de caída. Compatibilidad comprobada en los dos sentidos (`apps/web/test/compat-python.test.ts`).
 - [ ] Argon2id (protocolo v2) cuando esté disponible en Web Crypto, o vía WASM auditado.
 - [x] Métricas sin datos personales para Prometheus (`METRICS_TOKEN`, `/api/metrics`).
+- [ ] Despliegue de demostración pública con límites estrictos.
+
+## v1.0.0 «Estable» — ✅ hecha
+
+- [x] Promesas de compatibilidad para toda la 1.x ([docs/ESTABILIDAD.md](docs/ESTABILIDAD.md)).
+- [x] Imagen con etiquetas `:1` y `:1.y`.
+
+## v1.x
+
+- [ ] Argon2id como **protocolo v2, junto al v1** (los enlaces v1 se siguen abriendo), cuando esté en Web Crypto o vía WASM auditado. También en la CLI y en ARIA.
 - [ ] Despliegue de demostración pública con límites estrictos.
 
 ## Ideas sin priorizar

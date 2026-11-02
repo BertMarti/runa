@@ -177,6 +177,7 @@ Si quieres saber cómo funciona por dentro:
 | Documento | Qué cuenta |
 |---|---|
 | [Protocolo criptográfico](docs/PROTOCOLO.md) | Cómo se cifra, qué viaja y qué no |
+| [Estabilidad](docs/ESTABILIDAD.md) | Qué no cambia en toda la 1.x |
 | [CLI `runa`](cli/README.md) | Enviar, abrir y pedir secretos desde la terminal |
 | [Modelo de amenazas](docs/MODELO_DE_AMENAZAS.md) | Cada ataque que hemos considerado y cómo se frena |
 | [Arquitectura](docs/ARQUITECTURA.md) | Piezas del proyecto y decisiones |
