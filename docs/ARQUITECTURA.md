@@ -32,7 +32,7 @@ apps/
     src/crypto/      protocolo v1: cifrado, derivación, envoltorio, codificación
     src/screens/     Crear, Resultado, Revelar
     src/components/  piezas de interfaz
-    src/i18n/        español e inglés
+    src/i18n/        es (referencia), ca, gl, pt (de Portugal) y en; detección del idioma
     test/            tests del protocolo y de la interfaz
 cli/               CLI `runa` en Go (solo biblioteca estándar + golang.org/x/term)
   cmd/runa/          punto de entrada

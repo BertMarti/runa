@@ -34,7 +34,7 @@ Si tu Node local es < 24, antepón `./dk.sh` (ejecuta el comando en un contenedo
 
 - `apps/server/src/app.ts` rutas, esquemas, cabeceras, límites. `store.ts` SQLite. `config.ts` entorno. `limits.ts` límites.
 - `apps/web/src/crypto/` **protocolo v1** (ver `docs/PROTOCOLO.md`). Cualquier cambio aquí exige actualizar el documento y los tests.
-- `apps/web/src/screens/` pantallas; `components/` piezas; `i18n/` textos ES/EN.
+- `apps/web/src/screens/` pantallas; `components/` piezas; `i18n/` textos (`es.ts` es la referencia; `ca`, `gl`, `pt` y `en` deben tener las mismas claves y variables).
 - `cli/` CLI en Go. `internal/protocol/` es la traducción del protocolo: cualquier cambio en `apps/web/src/crypto/` exige regenerar los vectores de `cli/testdata/` (ver `cli/README.md`) y que ambos lados sigan abriéndolos.
 - `docs/` protocolo, modelo de amenazas, arquitectura, despliegue.
 

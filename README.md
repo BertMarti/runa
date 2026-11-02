@@ -107,7 +107,7 @@ Piensa en RUNA como una **caja fuerte con una sola llave**:
 | 📎 **Archivo adjunto** | Uno, de hasta 3 MB |
 | 🎲 **Generar contraseña segura** | Crea una contraseña robusta y lista para enviar |
 | 💣 **Destruir ahora** | ¿Te has equivocado de persona? Bórralo antes de que lo abran |
-| 🌍 **Idioma** | Español e inglés |
+| 🌍 **Idioma** | Español, catalán, gallego, portugués e inglés: se abre en el de tu navegador y puedes cambiarlo arriba |
 | 🌗 **Tema** | Oscuro, claro («Alba») o el de tu sistema |
 | 📲 **Instalable** | Añádela a la pantalla de inicio de tu móvil o a tu ordenador, como una app |
 

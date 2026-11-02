@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-10-31 por lead (v0.6.0)
+Última actualización: 2026-11-02 por builder (rama `feat/idiomas`)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -106,6 +106,17 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - Contraseñas solo desde `/dev/tty` (sin opción ni variable de entorno). Enlaces: argumento, entrada estándar o terminal sin eco. `request` escribe `envío: …` y `recogida: …` en stdout.
 - `cli-release.yml` sube binarios a la release de la etiqueta; si aún no existe, la crea como **borrador**.
 
+## Idiomas (rama `feat/idiomas`, 2026-11-02)
+
+- **ca, gl y pt (de Portugal)** además de es y en. `es.ts` es la referencia (`Messages`); los tests comprueban por idioma las mismas claves, las mismas `{variables}` por clave, `one`/`other` con `{n}`, sin marcado ni entidades, y que las FAQ citan los botones con su texto exacto («Destruir ara», «Revelar el secret»…).
+- **Detección** (`i18n/index.tsx`, como en Repartito): `runa.lang` guardado manda; si no, el primer idioma de `navigator.languages` por subetiqueta principal (`ca-ES-valencia` → ca, `pt-BR` → pt); `eu`, `ast`, `an` → es; ninguno → en; lista vacía → es. `Object.hasOwn` para que «constructor» no saque `Object` del prototipo (test). Solo se guarda la preferencia.
+- **Selector**: botón con el código (44 px) que despliega una lista opaca de cinco opciones de 44 px (`LangPicker.tsx`); cinco botones seguidos no cabían a 320 px. La lista no es translúcida a propósito: con el cristal se leía el titular por debajo.
+- `<html lang>`: `ca`, `gl`, `es`, `en` y **`pt-PT`** (voz de Portugal en los lectores de pantalla).
+- **Tono**: «tu» en ca y pt, «ti» en gl, como Repartito. pt-PT: ligação, palavra-passe, ficheiro, telemóvel, separador, transferir; las fechas llevan día de la semana («terça-feira»/«domingo»), así que «Válido até {date}» y no «Expira na/no». En catalán se evita «de {views}» (apóstrofo según el número): «Admet {views}». En gallego, «contrasinal» es masculino y sin «¿».
+- `index.html` (`lang="es"`, título y descripción) sigue en español: es lo que ven los buscadores y las vistas previas, sin JS. El `<noscript>` va en los cinco idiomas. El manifest se queda en español (no hay manifest por idioma sin servidor que negocie). El servidor solo devuelve códigos de error en JSON: no hay textos que traducir.
+- **Euskera fuera** hasta tener revisión nativa (PLAN.md).
+- Pendiente: lectura de hablantes nativos de ca, gl y pt.
+
 ## Trampas conocidas
 
 - En los tests con happy-dom llegaban eventos `hashchange` tras `history.replaceState` que reiniciaban la pantalla (en un navegador real `replaceState` no lanza ese evento). No confíes en el evento para saber si la persona cambió el enlace: compara el valor del `#`.
@@ -115,6 +126,8 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - `pkill -f patrón` dentro de un comando que contiene el patrón se mata a sí mismo.
 - En las pruebas web, happy-dom sustituye `URL`: `fileURLToPath(new URL(…, import.meta.url))` falla; usar `path.resolve(import.meta.dirname, …)`.
 - El detector de carreras de Go (`-race`) no funciona en el kernel de la Raspberry Pi (VMA de 47 bits); en el CI sí.
+- **Chromium no trae datos de ICU del gallego**: `Intl.DateTimeFormat('gl-ES')` cae al idioma por defecto (con un sistema en gallego, a los datos raíz: «M11 3, Tue»). Por eso `Intl` recibe `INTL_LOCALES` (`['gl-ES', 'es-ES']`): en Chromium las fechas en gallego salen con meses en español; en Firefox y Node, en gallego.
+- Un servidor arrancado antes de `vite build` sirve `index.html` para los recursos nuevos (MIME `text/html`): `@fastify/static` lista los archivos al arrancar. Reinícialo tras compilar.
 - Playwright: volver a abrir la misma URL cambiando solo el `#` es una navegación dentro del documento y el enrutador no reinicia la pantalla (el `#` ya se borró). En las pruebas, pasar antes por `about:blank`. `getByLabel('Secreto')` necesita `exact: true`. Con `reducedMotion: 'reduce'` las etiquetas animadas quedan «estables».
 
 ## Pendiente inmediato
