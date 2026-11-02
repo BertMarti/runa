@@ -1,5 +1,5 @@
 # MEMORY.md · RUNA
-Última actualización: 2026-11-02 por builder (rama `feat/idiomas`)
+Última actualización: 2026-11-02 por lead (rama `chore/release-1.0.0`)
 
 Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo estable (reglas, comandos, estructura) está en [AGENTS.md](AGENTS.md); la hoja de ruta, en [PLAN.md](PLAN.md).
 
@@ -102,6 +102,12 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 
 - Catalán, gallego y portugués en la web (PR #12) y demostración animada en el README (PR #11). Euskera pendiente de revisión nativa.
 
+## v1.0.0 «Estable» (2026-11-02)
+
+- Sin funciones nuevas: [docs/ESTABILIDAD.md](docs/ESTABILIDAD.md) fija qué no cambia en la 1.x (enlaces, protocolo v1, API, rutas, variables, datos, CLI, métricas). **Antes de fusionar algo, compruébalo contra esa lista**: romper cualquiera de esas piezas exige la 2.0.0.
+- Imagen también como `:1` y `:1.y` (`docker/metadata-action`, patrones `{{major}}` y `{{major}}.{{minor}}`, que solo se generan desde la 1.0). La doc recomienda `:1`.
+- Esquema: solo `CREATE TABLE IF NOT EXISTS`. Una columna nueva necesitará una migración automática (p. ej. `PRAGMA user_version`) para cumplir la promesa de datos.
+
 ## CLI `runa` (detalles)
 
 - Go con la **biblioteca estándar** para la cripto + `golang.org/x/term` (y su `x/sys`). `main` en `cli/cmd/runa` para que `go install …/cli/cmd/runa` dé el binario `runa`.
@@ -136,4 +142,4 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 
 ## Pendiente inmediato
 
-Ver PLAN.md (v0.6.0 «Forja»).
+Ver PLAN.md (v1.x: Argon2id como protocolo v2 junto al v1, demo pública).
