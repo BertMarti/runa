@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+## [0.7.0] - 2026-11-02
+
 ### Añadido
 
 - **Demostración animada** en el README (crear → revelar → «ya no existe»), grabada de la app real con `sh scripts/demo.sh` (Playwright + ffmpeg), con datos y dominio de ejemplo.
@@ -118,7 +120,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Ningún script de instalación de npm se ejecuta (`.npmrc`, CI y Docker); imágenes base fijadas por digest; código de la imagen propiedad de root.
 - HSTS sin `preload` por defecto.
 
-[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.6.0...HEAD
+[Sin publicar]: https://github.com/BertMarti/runa/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/BertMarti/runa/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/BertMarti/runa/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/BertMarti/runa/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/BertMarti/runa/compare/v0.3.0...v0.4.0
