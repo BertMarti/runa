@@ -13,3 +13,5 @@ coverage/
 e2e/.data/
 e2e/informe/
 test-results/
+e2e/.demo/
+e2e/.demo-data/

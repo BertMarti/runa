@@ -16,6 +16,10 @@
   Con <b>RUNA</b> creas un enlace que <b>solo funciona una vez</b>. En cuanto lo abren, el secreto <b>desaparece</b>.
 </p>
 
+<p align="center">
+  <img src="docs/assets/demo.webp" alt="Demostración animada: se escribe la clave del wifi, se crea el enlace con su código QR, quien lo recibe lo revela y, al volver a abrirlo, «Este secreto ya no existe»" width="880">
+</p>
+
 ---
 
 ## ✦ Así de fácil

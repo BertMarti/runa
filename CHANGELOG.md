@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [Sin publicar]
 
+### Añadido
+
+- **Demostración animada** en el README (crear → revelar → «ya no existe»), grabada de la app real con `sh scripts/demo.sh` (Playwright + ffmpeg), con datos y dominio de ejemplo.
+
 ## [0.6.0] - 2026-10-31
 
 ### Añadido
