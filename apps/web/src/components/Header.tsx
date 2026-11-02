@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { fmt, LANGS, useI18n, type Lang } from '../i18n';
+import { fmt, useI18n } from '../i18n';
 import { nextTheme, readTheme, saveTheme, type Theme } from '../lib/theme';
 import { Icon, type IconName } from './Icon';
+import { LangPicker } from './LangPicker';
 import { onLinkClick } from '../router';
 import { Rune, RUNA_WORD } from './runes';
-
-const LANG_NAMES: Record<Lang, string> = { es: 'Español', en: 'English' };
 
 const THEME_ICON: Record<Theme, IconName> = {
   auto: 'contrast',
@@ -14,7 +13,7 @@ const THEME_ICON: Record<Theme, IconName> = {
 };
 
 export function Header() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const cycle = () => {
     const next = nextTheme(theme);
@@ -36,21 +35,7 @@ export function Header() {
         <button type="button" className="theme-btn" onClick={cycle} aria-label={themeLabel} title={themeLabel}>
           <Icon name={THEME_ICON[theme]} />
         </button>
-        <div className="lang" role="group" aria-label={t.header.language}>
-          {LANGS.map((code) => (
-            <button
-              key={code}
-              type="button"
-              className="lang__btn"
-              lang={code}
-              aria-pressed={lang === code}
-              aria-label={LANG_NAMES[code]}
-              onClick={() => setLang(code)}
-            >
-              {code.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <LangPicker />
       </div>
     </header>
   );

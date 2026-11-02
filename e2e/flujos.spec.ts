@@ -108,3 +108,34 @@ test('se puede instalar (manifest e iconos) y el tema claro carga sin errores', 
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(7, 10, 16)');
   expect(errores).toEqual([]);
 });
+
+test('en un navegador en catalán: crear → revelar en catalán, y la elección de idioma se recuerda', async ({ browser }) => {
+  const ctx = await browser.newContext({ locale: 'ca-ES', reducedMotion: 'reduce', viewport: { width: 320, height: 720 } });
+  const page = await ctx.newPage();
+  const errores = vigilarConsola(page);
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ca');
+  await expect(page.getByRole('heading', { level: 1, name: 'Comparteix un secret que s’esborra en llegir-lo' })).toBeVisible();
+  // A 320 px nada desborda (tampoco con la lista de idiomas abierta).
+  const desborda = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(await desborda()).toBe(false);
+
+  await page.getByLabel('Secret', { exact: true }).fill('clau del wifi: 9f$Kp2');
+  await page.getByRole('button', { name: 'Xifrar i crear l’enllaç' }).click();
+  await expect(page.getByRole('heading', { name: 'Enllaç a punt' })).toBeVisible();
+  const enlace = await enlaceDe(page);
+
+  await abrir(page, enlace);
+  await expect(page.getByRole('heading', { level: 1, name: 'T’han enviat un secret' })).toBeVisible();
+  await page.getByRole('button', { name: 'Revelar el secret' }).click();
+  await expect(page.getByText('clau del wifi: 9f$Kp2')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Idioma: Català' }).click();
+  expect(await desborda()).toBe(false);
+  await page.getByRole('button', { name: 'Português' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'pt-PT');
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Cifrar e criar ligação' })).toBeVisible();
+  expect(errores).toEqual([]);
+  await ctx.close();
+});
