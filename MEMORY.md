@@ -90,6 +90,7 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **Tema claro**: tokens en `base.css` con canales RGB (`--teal-rgb`, `--well-rgb` para pozos, `--tint-rgb` para realces…). «Alba» se aplica con `@media (prefers-color-scheme: light)` sobre `:root:not([data-theme='dark'])` y con `:root[data-theme='light']` (bloque duplicado a propósito: sin JS al cargar en automático). `lib/theme.ts` guarda `runa.theme` en localStorage (preferencia, no secreto). Verde del tema claro `#0a715e` (AA también como enlace sobre el fondo; `#0b7a66` daba 4,44).
 - Los `<stop>` del sello toman el color por clase (`stop-color` es CSS): nada de estilos en línea.
 - **Instalable sin service worker** (decisión): registrar uno exige una política de Trusted Types y no aporta nada sin servidor.
+- Demostración animada del README: `sh scripts/demo.sh` (tras `./dk.sh npm run build`): servidor con `PUBLIC_URL=https://runa.example`, Playwright graba un webm, ffmpeg lo pasa a WebP animado (880 px, 10 fps, ~2,7 MB). `ready()` espera a cargar Cinzel/Inter/JetBrains (`fonts.ready` sola se resolvía antes) y el inicio del vídeo se recorta.
 - Iconos: `sh scripts/brand/icons.sh` (rsvg-convert). Capturas: `scripts/capture.mjs` (tema oscuro forzado salvo `captura-movil-claro.png`).
 
 ## v0.6.0 «Forja» (2026-10-31)
