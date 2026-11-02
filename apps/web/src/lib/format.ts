@@ -1,7 +1,7 @@
 import { TTL_OPTIONS, type Ttl } from '../crypto';
 import type { Messages } from '../i18n';
 
-export function formatBytes(bytes: number, locale: string): string {
+export function formatBytes(bytes: number, locale: Intl.LocalesArgument): string {
   const units = ['B', 'KB', 'MB'] as const;
   let value = bytes;
   let unit = 0;
@@ -13,7 +13,7 @@ export function formatBytes(bytes: number, locale: string): string {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value)} ${units[unit]}`;
 }
 
-export function formatNumber(n: number, locale: string): string {
+export function formatNumber(n: number, locale: Intl.LocalesArgument): string {
   return new Intl.NumberFormat(locale).format(n);
 }
 

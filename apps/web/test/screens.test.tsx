@@ -101,6 +101,7 @@ describe('pantalla de crear', () => {
   it('cambia de idioma y actualiza <html lang>', async () => {
     at('/');
     render(<App lang="es" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Idioma: Español' }));
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByRole('button', { name: 'Encrypt and create link' })).toBeTruthy();
     expect(document.documentElement.lang).toBe('en');

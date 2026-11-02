@@ -16,6 +16,7 @@ const ICONS = {
   sun: 'M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4',
   moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   contrast: 'M12 21a9 9 0 1 0 0-18v18zM12 3a9 9 0 0 0 0 18',
+  chevron: 'M7 10l5 5 5-5',
 } as const;
 
 export type IconName = keyof typeof ICONS;

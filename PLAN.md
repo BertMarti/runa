@@ -62,7 +62,7 @@ Compartir una contraseña, una clave API o un archivo sensible debería ser **ta
 
 - Varios archivos por secreto (zip en el cliente).
 - Notificación opcional al emisor cuando se lee (webhook firmado, sin datos del lector).
-- Traducciones adicionales (catalán, gallego, euskera, portugués).
+- Traducciones adicionales: ~~catalán, gallego, portugués~~ hechas; **euskera** pendiente (necesita revisión de una persona nativa; mientras, `eu` abre en español).
 
 ## Cómo se trabaja
 

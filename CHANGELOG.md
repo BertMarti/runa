@@ -7,6 +7,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 ### Añadido
 
 - **Demostración animada** en el README (crear → revelar → «ya no existe»), grabada de la app real con `sh scripts/demo.sh` (Playwright + ffmpeg), con datos y dominio de ejemplo.
+- **Catalán, gallego y portugués de Portugal** en la web, además de español e inglés. Al entrar, RUNA usa el primer idioma de tu navegador que sabe hablar (`ca-ES-valencia` → catalán, `pt-BR` → portugués; euskera, asturiano y aragonés → español; cualquier otro → inglés); lo que elijas en la cabecera manda y se recuerda en este navegador (`runa.lang`, solo la preferencia).
+- Fechas, números y plurales con el formato de cada idioma (`ca-ES`, `gl-ES`, `pt-PT`); si el navegador no trae datos del gallego (Chromium), las fechas salen en español y no en el idioma del sistema.
+- El aviso para navegadores sin JavaScript aparece en los cinco idiomas.
+
+### Cambiado
+
+- El selector de idioma de la cabecera pasa de dos botones a un botón con el código del idioma que despliega la lista: cinco no cabían a 320 px. Objetivos de 44 px, se cierra con Escape, al pulsar fuera o al elegir, y `<html lang>` sigue la elección (`pt-PT` para que los lectores de pantalla usen la voz de Portugal).
 
 ## [0.6.0] - 2026-10-31
 

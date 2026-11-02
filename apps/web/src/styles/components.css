@@ -627,21 +627,25 @@
   box-shadow: var(--focus);
 }
 
+/*
+ * Idioma: un botón con el código del activo y una lista desplegable. Cinco botones seguidos no caben a
+ * 320 px junto a la marca; el botón mide lo mismo que el del tema y las opciones, 44 px de alto.
+ */
 .lang {
+  position: relative;
+}
+
+.lang__toggle {
   display: inline-flex;
-  padding: 3px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 8px 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-chip);
   background: rgb(var(--well-rgb) / 0.5);
-}
-
-.lang__btn {
-  min-width: 44px;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--r-chip);
-  background: none;
   color: var(--text-dim);
   font-size: 0.8rem;
   font-weight: 650;
@@ -649,9 +653,87 @@
   cursor: pointer;
 }
 
-.lang__btn[aria-pressed='true'] {
-  background: rgb(var(--tint-rgb) / 0.1);
+.lang__toggle:hover,
+.lang__toggle[aria-expanded='true'] {
   color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.lang__toggle:focus-visible,
+.lang__option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.lang__chevron {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.lang__toggle[aria-expanded='true'] .lang__chevron {
+  transform: rotate(180deg);
+}
+
+.lang__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 11.5rem;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  /* Opaca: encima del titular, un cristal translúcido dejaría leer las letras de debajo. */
+  background: var(--bg-raised);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--tint-rgb) / 0.05),
+    0 18px 40px -18px rgb(0 0 0 / 0.6);
+}
+
+.lang__menu[hidden] {
+  display: none;
+}
+
+.lang__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: calc(var(--r-ctl) - 4px);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lang__option:hover {
+  background: rgb(var(--tint-rgb) / 0.06);
+  color: var(--text);
+}
+
+.lang__option[aria-pressed='true'] {
+  background: rgb(var(--teal-rgb) / 0.12);
+  color: var(--text);
+}
+
+.lang__abbr {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.lang__option[aria-pressed='true'] .lang__abbr {
+  color: var(--teal);
 }
 
 /* ── Insignias, FAQ, pie ────────────────────────────────── */
