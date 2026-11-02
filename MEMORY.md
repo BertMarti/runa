@@ -98,6 +98,10 @@ Memoria compartida entre agentes: estado, decisiones y trampas conocidas. Lo est
 - **Métricas** (PR #8): `/api/metrics` solo con `METRICS_TOKEN` (≥ 32 caracteres, Bearer en tiempo constante); sin token la ruta no existe. Rutas contadas por patrón (`req.routeOptions.url`), nunca la URL. `serverVersion()` lee `package.json` junto al código (Docker) o una carpeta arriba (desarrollo).
 - **CLI** (PR #9): auditoría independiente sin altos ni medios; CL1-CL3 corregidos. `.gitleaks.toml` exime **solo** `cli/testdata/desde-{ts,go}.json` (las «token» de los vectores son aleatorias); comprobado que fuera de ahí sigue detectando.
 
+## v0.7.0 «Voces» (2026-11-02)
+
+- Catalán, gallego y portugués en la web (PR #12) y demostración animada en el README (PR #11). Euskera pendiente de revisión nativa.
+
 ## CLI `runa` (detalles)
 
 - Go con la **biblioteca estándar** para la cripto + `golang.org/x/term` (y su `x/sys`). `main` en `cli/cmd/runa` para que `go install …/cli/cmd/runa` dé el binario `runa`.
